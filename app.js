@@ -3,10 +3,23 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
-//variables routes
+// ===============================
+// ROUTES
+// ===============================
+
 const routeAdmin = require('./routes/admin');
+const routeArticle = require('./routes/article');
+
+// ===============================
+// APPLICATION
+// ===============================
 
 const app = express();
+
+// ===============================
+// MONGODB
+// ===============================
+
 mongoose.connect(
   'mongodb://kolony:1708roosevelt@187.124.114.57:27017/flechissons?authSource=admin'
 )
@@ -16,36 +29,52 @@ mongoose.connect(
 .catch((err) => {
   console.error('Erreur MongoDB:', err);
 });
+
 // ===============================
-// CONFIGURATION CORS
+// CORS
 // ===============================
 
 app.use(cors());
 
-
 // ===============================
-// PARSING DES DONNÉES
+// PARSING
 // ===============================
 
-// JSON
 app.use(bodyParser.json());
-
-// Données envoyées depuis des formulaires
 app.use(bodyParser.urlencoded({ extended: true }));
 
-
 // ===============================
-// ROUTE DE TEST
+// ROUTE PRINCIPALE
 // ===============================
 
 app.get('/', (req, res) => {
-    res.json({
-        message: 'API Kinova fonctionne correctement 🚀'
-    });
+  res.status(200).json({
+    success: true,
+    message: 'API Flechissons fonctionne correctement 🚀'
+  });
 });
 
+// ===============================
+// ROUTES API
+// ===============================
 
 app.use('/auth', routeAdmin);
 
+app.use('/article', routeArticle);
+
+// ===============================
+// 404
+// ===============================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route introuvable : ${req.method} ${req.originalUrl}`
+  });
+});
+
+// ===============================
+// EXPORT
+// ===============================
 
 module.exports = app;
