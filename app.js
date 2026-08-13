@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -9,6 +10,7 @@ const mongoose = require('mongoose');
 
 const routeAdmin = require('./routes/admin');
 const routeArticle = require('./routes/article');
+const routeAuth = require('./routes/auth');
 
 // ===============================
 // APPLICATION
@@ -61,6 +63,8 @@ app.get('/', (req, res) => {
 app.use('/auth', routeAdmin);
 
 app.use('/article', routeArticle);
+
+app.use('/user', routeAuth);
 
 // ===============================
 // 404

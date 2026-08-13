@@ -16,6 +16,8 @@ pnpm-debug.log*
 .env.local
 .env.development
 .env.production
+**/firebase-service-account.json
+config/firebase-service-account.json
 
 # ==============================
 # Logs
@@ -64,3 +66,6 @@ uploads/
 
 coverage/
 .nyc_output/
+
+config/firebase-service-account.json
+.env
