@@ -12,16 +12,15 @@ const commentaireSchema = new mongoose.Schema(
             required: true
         },
         
+        // ✅ Rendre optionnel avec default
         nom: {
             type: String,
-            required: true,
-            trim: true
+            default: 'Utilisateur'
         },
         
         prenom: {
             type: String,
-            required: true,
-            trim: true
+            default: ''
         },
         
         photo: {

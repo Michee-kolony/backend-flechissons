@@ -185,7 +185,7 @@ const toggleLike = async (req, res) => {
 };
 
 // =====================================================
-// AJOUTER UN COMMENTAIRE
+// AJOUTER UN COMMENTAIRE (CORRIGÉ)
 // =====================================================
 
 const ajouterCommentaire = async (req, res) => {
@@ -197,6 +197,8 @@ const ajouterCommentaire = async (req, res) => {
     console.log('📝 Ajout commentaire:');
     console.log('- Article ID:', id);
     console.log('- Utilisateur ID:', utilisateurId);
+    console.log('- Nom reçu:', nom);
+    console.log('- Prénom reçu:', prenom);
 
     // ===============================
     // VALIDATION
@@ -224,20 +226,6 @@ const ajouterCommentaire = async (req, res) => {
     }
 
     // ===============================
-    // RÉCUPÉRER L'UTILISATEUR (OPTIONNEL)
-    // ===============================
-
-    let user = null;
-    try {
-      user = await Utilisateur.findById(utilisateurId);
-      if (user) {
-        console.log('👤 Utilisateur trouvé:', user.email);
-      }
-    } catch (err) {
-      console.log('⚠️ Utilisateur non trouvé en base, utilisation des données frontend');
-    }
-
-    // ===============================
     // RÉCUPÉRER L'ARTICLE
     // ===============================
 
@@ -251,16 +239,42 @@ const ajouterCommentaire = async (req, res) => {
     }
 
     // ===============================
-    // CRÉER LE COMMENTAIRE
+    // RÉCUPÉRER L'UTILISATEUR (OPTIONNEL)
+    // ===============================
+
+    let user = null;
+    let userNom = nom || 'Utilisateur';
+    let userPrenom = prenom || '';
+    let userPhoto = photo || null;
+
+    try {
+      user = await Utilisateur.findById(utilisateurId);
+      if (user) {
+        console.log('👤 Utilisateur trouvé:', user.email);
+        // Utiliser les données de l'utilisateur si disponibles
+        userNom = user.nom || userNom;
+        userPrenom = user.prenom || userPrenom;
+        userPhoto = user.photo || user.avatar || userPhoto;
+      } else {
+        console.log('⚠️ Utilisateur non trouvé en base, utilisation des données frontend');
+      }
+    } catch (err) {
+      console.log('⚠️ Erreur recherche utilisateur, utilisation des données frontend');
+    }
+
+    // ===============================
+    // CRÉER LE COMMENTAIRE AVEC VALEURS PAR DÉFAUT
     // ===============================
 
     const nouveauCommentaire = {
       utilisateurId: utilisateurId,
-      nom: user?.nom || nom || 'Utilisateur',
-      prenom: user?.prenom || prenom || '',
-      photo: user?.photo || user?.avatar || photo || null,
+      nom: userNom || 'Utilisateur',
+      prenom: userPrenom || '',
+      photo: userPhoto || null,
       contenu: contenu.trim()
     };
+
+    console.log('📝 Nouveau commentaire créé:', nouveauCommentaire);
 
     articleTrouve.commentaires.push(nouveauCommentaire);
     await articleTrouve.save();
