@@ -130,4 +130,4 @@ articleSchema.index({ createdAt: -1 });
 // MODEL
 // =====================================================
 
-module.exports = mongoose.model("Article", articleSchema);
+module.exports = mongoose.model("article", articleSchema);
