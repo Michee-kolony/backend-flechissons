@@ -1,6 +1,6 @@
 // controllers/articleController.js
-const article = require("../models/article");
-const Utilisateur = require("../models/user"); // ✅ Ajout de l'import Utilisateur
+const Article = require("../models/article");
+const Utilisateur = require("../models/user");
 const multer = require("multer");
 
 // ===============================
@@ -18,10 +18,6 @@ const creerArticle = async (req, res) => {
 
   try {
 
-    // ===============================
-    // DONNÉES
-    // ===============================
-
     const {
       titre,
       description,
@@ -31,94 +27,42 @@ const creerArticle = async (req, res) => {
       lien
     } = req.body;
 
-    // ===============================
-    // VALIDATION
-    // ===============================
-
     if (!titre || !description || !type || !theme) {
-
       return res.status(400).json({
-
         success: false,
-
-        message:
-          'Titre, description, type et thème sont obligatoires.'
-
+        message: 'Titre, description, type et thème sont obligatoires.'
       });
-
     }
-
-    // ===============================
-    // URLS PUBLIQUES R2
-    // ===============================
 
     const images = (req.files || []).map(
       file => `${R2_PUBLIC_URL}/${file.key}`
     );
 
-    // ===============================
-    // CRÉATION ARTICLE
-    // ===============================
-
-    const nouvelArticle = await article.create({
-
+    const nouvelArticle = await Article.create({
       titre: titre.trim(),
-
       description: description.trim(),
-
       type,
-
       theme: theme.trim(),
-
-      youtube: youtube
-        ? youtube.trim()
-        : null,
-
-      lien: lien
-        ? lien.trim()
-        : null,
-
+      youtube: youtube ? youtube.trim() : null,
+      lien: lien ? lien.trim() : null,
       images,
-
       likes: [],
-
       commentaires: []
-
     });
 
-    // ===============================
-    // RÉPONSE
-    // ===============================
-
     return res.status(201).json({
-
       success: true,
-
-      message:
-        'Article créé avec succès.',
-
+      message: 'Article créé avec succès.',
       article: nouvelArticle
-
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur création article :',
-      error
-    );
-
+    console.error('❌ Erreur création article :', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors de la création de l\'article.',
-
+      message: 'Erreur lors de la création de l\'article.',
       error: error.message
-
     });
-
   }
 
 };
@@ -130,40 +74,21 @@ const creerArticle = async (req, res) => {
 const getArticles = async (req, res) => {
 
   try {
-
-    const articles = await article
-      .find()
-      .sort({ createdAt: -1 });
+    const articles = await Article.find().sort({ createdAt: -1 });
 
     return res.status(200).json({
-
       success: true,
-
-      message:
-        'Articles récupérés avec succès.',
-
+      message: 'Articles récupérés avec succès.',
       articles
-
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur récupération articles :',
-      error
-    );
-
+    console.error('❌ Erreur récupération articles :', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors de la récupération des articles.',
-
+      message: 'Erreur lors de la récupération des articles.',
       error: error.message
-
     });
-
   }
 
 };
@@ -175,53 +100,29 @@ const getArticles = async (req, res) => {
 const getArticle = async (req, res) => {
 
   try {
-
     const { id } = req.params;
-
-    const articleTrouve =
-      await article.findById(id);
+    const articleTrouve = await Article.findById(id);
 
     if (!articleTrouve) {
-
       return res.status(404).json({
-
         success: false,
-
         message: 'Article introuvable.'
-
       });
-
     }
 
     return res.status(200).json({
-
       success: true,
-
-      message:
-        'Article récupéré avec succès.',
-
+      message: 'Article récupéré avec succès.',
       article: articleTrouve
-
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur récupération article :',
-      error
-    );
-
+    console.error('❌ Erreur récupération article :', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors de la récupération de l\'article.',
-
+      message: 'Erreur lors de la récupération de l\'article.',
       error: error.message
-
     });
-
   }
 
 };
@@ -233,109 +134,69 @@ const getArticle = async (req, res) => {
 const toggleLike = async (req, res) => {
 
   try {
-
     const { id } = req.params;
-
     const { utilisateurId } = req.body;
 
     if (!utilisateurId) {
-
       return res.status(400).json({
-
         success: false,
-
-        message:
-          'utilisateurId est obligatoire.'
-
+        message: 'utilisateurId est obligatoire.'
       });
-
     }
 
-    const articleTrouve =
-      await article.findById(id);
+    const articleTrouve = await Article.findById(id);
 
     if (!articleTrouve) {
-
       return res.status(404).json({
-
         success: false,
-
         message: 'Article introuvable.'
-
       });
-
     }
 
-    const dejaLike =
-      articleTrouve.likes.some(
-        userId =>
-          userId.toString() ===
-          utilisateurId.toString()
-      );
+    const dejaLike = articleTrouve.likes.some(
+      userId => userId.toString() === utilisateurId.toString()
+    );
 
     if (dejaLike) {
-
-      articleTrouve.likes =
-        articleTrouve.likes.filter(
-          userId =>
-            userId.toString() !==
-            utilisateurId.toString()
-        );
-
-    } else {
-
-      articleTrouve.likes.push(
-        utilisateurId
+      articleTrouve.likes = articleTrouve.likes.filter(
+        userId => userId.toString() !== utilisateurId.toString()
       );
-
+    } else {
+      articleTrouve.likes.push(utilisateurId);
     }
 
     await articleTrouve.save();
 
     return res.status(200).json({
-
       success: true,
-
-      message: dejaLike
-        ? 'Like retiré.'
-        : 'Article aimé.',
-
+      message: dejaLike ? 'Like retiré.' : 'Article aimé.',
       likes: articleTrouve.likes.length
-
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur like :',
-      error
-    );
-
+    console.error('❌ Erreur like :', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors du traitement du like.',
-
+      message: 'Erreur lors du traitement du like.',
       error: error.message
-
     });
-
   }
 
 };
 
 // =====================================================
-// AJOUTER UN COMMENTAIRE (MODIFIÉ AVEC NOM, PRENOM, PHOTO)
+// AJOUTER UN COMMENTAIRE
 // =====================================================
 
 const ajouterCommentaire = async (req, res) => {
 
   try {
-
     const { id } = req.params;
     const { utilisateurId, contenu, nom, prenom, photo } = req.body;
+
+    console.log('📝 Ajout commentaire:');
+    console.log('- Article ID:', id);
+    console.log('- Utilisateur ID:', utilisateurId);
 
     // ===============================
     // VALIDATION
@@ -355,6 +216,27 @@ const ajouterCommentaire = async (req, res) => {
       });
     }
 
+    if (contenu.trim().length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le commentaire ne peut pas dépasser 500 caractères.'
+      });
+    }
+
+    // ===============================
+    // RÉCUPÉRER L'UTILISATEUR (OPTIONNEL)
+    // ===============================
+
+    let user = null;
+    try {
+      user = await Utilisateur.findById(utilisateurId);
+      if (user) {
+        console.log('👤 Utilisateur trouvé:', user.email);
+      }
+    } catch (err) {
+      console.log('⚠️ Utilisateur non trouvé en base, utilisation des données frontend');
+    }
+
     // ===============================
     // RÉCUPÉRER L'ARTICLE
     // ===============================
@@ -369,14 +251,14 @@ const ajouterCommentaire = async (req, res) => {
     }
 
     // ===============================
-    // CRÉER LE COMMENTAIRE AVEC LES DONNÉES DU FRONTEND
+    // CRÉER LE COMMENTAIRE
     // ===============================
 
     const nouveauCommentaire = {
       utilisateurId: utilisateurId,
-      nom: nom || 'Utilisateur',
-      prenom: prenom || '',
-      photo: photo || null,
+      nom: user?.nom || nom || 'Utilisateur',
+      prenom: user?.prenom || prenom || '',
+      photo: user?.photo || user?.avatar || photo || null,
       contenu: contenu.trim()
     };
 
@@ -418,52 +300,28 @@ const ajouterCommentaire = async (req, res) => {
 const supprimerArticle = async (req, res) => {
 
   try {
-
     const { id } = req.params;
-
-    const articleSupprime =
-      await article.findByIdAndDelete(id);
+    const articleSupprime = await Article.findByIdAndDelete(id);
 
     if (!articleSupprime) {
-
       return res.status(404).json({
-
         success: false,
-
-        message:
-          'Article introuvable.'
-
+        message: 'Article introuvable.'
       });
-
     }
 
     return res.status(200).json({
-
       success: true,
-
-      message:
-        'Article supprimé avec succès.'
-
+      message: 'Article supprimé avec succès.'
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur suppression article :',
-      error
-    );
-
+    console.error('❌ Erreur suppression article :', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors de la suppression de l\'article.',
-
+      message: 'Erreur lors de la suppression de l\'article.',
       error: error.message
-
     });
-
   }
 
 };
@@ -473,17 +331,10 @@ const supprimerArticle = async (req, res) => {
 // =====================================================
 
 module.exports = {
-
   creerArticle,
-
   getArticles,
-
   getArticle,
-
   toggleLike,
-
   ajouterCommentaire,
-
   supprimerArticle
-
 };

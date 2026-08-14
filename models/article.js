@@ -12,7 +12,6 @@ const commentaireSchema = new mongoose.Schema(
             required: true
         },
         
-        // ✅ INFOS UTILISATEUR STOCKÉES DIRECTEMENT
         nom: {
             type: String,
             required: true,
@@ -130,4 +129,4 @@ articleSchema.index({ createdAt: -1 });
 // MODEL
 // =====================================================
 
-module.exports = mongoose.model("article", articleSchema);
+module.exports = mongoose.model("Article", articleSchema);
