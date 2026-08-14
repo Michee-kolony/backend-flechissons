@@ -335,134 +335,59 @@ const ajouterCommentaire = async (req, res) => {
   try {
 
     const { id } = req.params;
-
-    const {
-      utilisateurId,
-      contenu
-    } = req.body;
+    const { utilisateurId, contenu, nom, prenom, photo } = req.body;
 
     // ===============================
     // VALIDATION
     // ===============================
 
     if (!utilisateurId || !contenu) {
-
       return res.status(400).json({
-
         success: false,
-
-        message:
-          'utilisateurId et contenu sont obligatoires.'
-
+        message: 'utilisateurId et contenu sont obligatoires.'
       });
-
     }
 
     if (contenu.trim().length < 1) {
-
       return res.status(400).json({
-
         success: false,
-
-        message:
-          'Le commentaire ne peut pas être vide.'
-
+        message: 'Le commentaire ne peut pas être vide.'
       });
-
-    }
-
-    if (contenu.trim().length > 500) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          'Le commentaire ne peut pas dépasser 500 caractères.'
-
-      });
-
-    }
-
-    // ===============================
-    // RÉCUPÉRER L'UTILISATEUR
-    // ===============================
-
-    const user = await Utilisateur.findById(utilisateurId);
-
-    if (!user) {
-
-      return res.status(404).json({
-
-        success: false,
-
-        message:
-          'Utilisateur non trouvé.'
-
-      });
-
     }
 
     // ===============================
     // RÉCUPÉRER L'ARTICLE
     // ===============================
 
-    const articleTrouve =
-      await article.findById(id);
+    const articleTrouve = await Article.findById(id);
 
     if (!articleTrouve) {
-
       return res.status(404).json({
-
         success: false,
-
-        message:
-          'Article introuvable.'
-
+        message: 'Article introuvable.'
       });
-
     }
 
     // ===============================
-    // CRÉER LE COMMENTAIRE AVEC TOUTES LES INFOS
+    // CRÉER LE COMMENTAIRE AVEC LES DONNÉES DU FRONTEND
     // ===============================
 
     const nouveauCommentaire = {
-
       utilisateurId: utilisateurId,
-
-      nom: user.nom || "Utilisateur",
-
-      prenom: user.prenom || "",
-
-      photo: user.photo || user.avatar || null,
-
+      nom: nom || 'Utilisateur',
+      prenom: prenom || '',
+      photo: photo || null,
       contenu: contenu.trim()
-
     };
 
     articleTrouve.commentaires.push(nouveauCommentaire);
-
     await articleTrouve.save();
 
-    // ===============================
-    // RÉCUPÉRER LE DERNIER COMMENTAIRE AJOUTÉ
-    // ===============================
-
-    const commentaireAjoute =
-      articleTrouve.commentaires[articleTrouve.commentaires.length - 1];
-
-    // ===============================
-    // RÉPONSE
-    // ===============================
+    const commentaireAjoute = articleTrouve.commentaires[articleTrouve.commentaires.length - 1];
 
     return res.status(201).json({
-
       success: true,
-
-      message:
-        'Commentaire ajouté avec succès.',
-
+      message: 'Commentaire ajouté avec succès.',
       commentaire: {
         _id: commentaireAjoute._id,
         utilisateurId: commentaireAjoute.utilisateurId,
@@ -472,29 +397,16 @@ const ajouterCommentaire = async (req, res) => {
         contenu: commentaireAjoute.contenu,
         createdAt: commentaireAjoute.createdAt
       },
-
       totalCommentaires: articleTrouve.commentaires.length
-
     });
 
   } catch (error) {
-
-    console.error(
-      '❌ Erreur commentaire :',
-      error
-    );
-
+    console.error('❌ Erreur commentaire:', error);
     return res.status(500).json({
-
       success: false,
-
-      message:
-        'Erreur lors de l\'ajout du commentaire.',
-
+      message: 'Erreur lors de l\'ajout du commentaire.',
       error: error.message
-
     });
-
   }
 
 };
