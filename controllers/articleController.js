@@ -1,5 +1,6 @@
 // controllers/articleController.js
 const article = require("../models/article");
+const Utilisateur = require("../models/user"); // ✅ Ajout de l'import Utilisateur
 const multer = require("multer");
 
 // ===============================
@@ -51,7 +52,6 @@ const creerArticle = async (req, res) => {
     // URLS PUBLIQUES R2
     // ===============================
 
-    // Récupérer les fichiers déjà uploadés par le middleware
     const images = (req.files || []).map(
       file => `${R2_PUBLIC_URL}/${file.key}`
     );
@@ -327,7 +327,7 @@ const toggleLike = async (req, res) => {
 };
 
 // =====================================================
-// AJOUTER UN COMMENTAIRE
+// AJOUTER UN COMMENTAIRE (MODIFIÉ AVEC NOM, PRENOM, PHOTO)
 // =====================================================
 
 const ajouterCommentaire = async (req, res) => {
@@ -341,6 +341,10 @@ const ajouterCommentaire = async (req, res) => {
       contenu
     } = req.body;
 
+    // ===============================
+    // VALIDATION
+    // ===============================
+
     if (!utilisateurId || !contenu) {
 
       return res.status(400).json({
@@ -353,6 +357,55 @@ const ajouterCommentaire = async (req, res) => {
       });
 
     }
+
+    if (contenu.trim().length < 1) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          'Le commentaire ne peut pas être vide.'
+
+      });
+
+    }
+
+    if (contenu.trim().length > 500) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          'Le commentaire ne peut pas dépasser 500 caractères.'
+
+      });
+
+    }
+
+    // ===============================
+    // RÉCUPÉRER L'UTILISATEUR
+    // ===============================
+
+    const user = await Utilisateur.findById(utilisateurId);
+
+    if (!user) {
+
+      return res.status(404).json({
+
+        success: false,
+
+        message:
+          'Utilisateur non trouvé.'
+
+      });
+
+    }
+
+    // ===============================
+    // RÉCUPÉRER L'ARTICLE
+    // ===============================
 
     const articleTrouve =
       await article.findById(id);
@@ -370,15 +423,38 @@ const ajouterCommentaire = async (req, res) => {
 
     }
 
-    articleTrouve.commentaires.push({
+    // ===============================
+    // CRÉER LE COMMENTAIRE AVEC TOUTES LES INFOS
+    // ===============================
 
-      utilisateurId,
+    const nouveauCommentaire = {
+
+      utilisateurId: utilisateurId,
+
+      nom: user.nom || "Utilisateur",
+
+      prenom: user.prenom || "",
+
+      photo: user.photo || user.avatar || null,
 
       contenu: contenu.trim()
 
-    });
+    };
+
+    articleTrouve.commentaires.push(nouveauCommentaire);
 
     await articleTrouve.save();
+
+    // ===============================
+    // RÉCUPÉRER LE DERNIER COMMENTAIRE AJOUTÉ
+    // ===============================
+
+    const commentaireAjoute =
+      articleTrouve.commentaires[articleTrouve.commentaires.length - 1];
+
+    // ===============================
+    // RÉPONSE
+    // ===============================
 
     return res.status(201).json({
 
@@ -387,8 +463,17 @@ const ajouterCommentaire = async (req, res) => {
       message:
         'Commentaire ajouté avec succès.',
 
-      commentaires:
-        articleTrouve.commentaires
+      commentaire: {
+        _id: commentaireAjoute._id,
+        utilisateurId: commentaireAjoute.utilisateurId,
+        nom: commentaireAjoute.nom,
+        prenom: commentaireAjoute.prenom,
+        photo: commentaireAjoute.photo,
+        contenu: commentaireAjoute.contenu,
+        createdAt: commentaireAjoute.createdAt
+      },
+
+      totalCommentaires: articleTrouve.commentaires.length
 
     });
 
