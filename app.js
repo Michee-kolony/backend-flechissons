@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 
 const routeAdmin = require('./routes/admin');
 const routeArticle = require('./routes/article');
-const routeAuth = require('./routes/auth');
+const routeAuth = require('./routes/user');
 
 // ===============================
 // APPLICATION
