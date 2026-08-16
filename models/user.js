@@ -14,43 +14,24 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     nom: {
-
       type: String,
-
       required: true,
-
       trim: true
-
     },
-
 
     email: {
-
       type: String,
-
       required: true,
-
       unique: true,
-
       lowercase: true,
-
-      trim: true,
-
-      index: true
-
+      trim: true
     },
 
-
     password: {
-
       type: String,
-
       required: true,
-
       minlength: 6,
-
       select: false
-
     },
 
 
@@ -59,24 +40,15 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     resetPasswordToken: {
-
       type: String,
-
       default: null,
-
       select: false
-
     },
 
-
     resetPasswordExpires: {
-
       type: Date,
-
       default: null,
-
       select: false
-
     },
 
 
@@ -85,22 +57,14 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     prenom: {
-
       type: String,
-
       trim: true,
-
       default: ''
-
     },
 
-
     photo: {
-
       type: String,
-
       default: ''
-
     },
 
 
@@ -109,49 +73,31 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     sexe: {
-
       type: String,
-
       enum: [
         'homme',
         'femme',
         'autre',
         'non_precise'
       ],
-
       default: 'non_precise'
-
     },
-
 
     dateNaissance: {
-
       type: Date,
-
       default: null
-
     },
-
 
     telephone: {
-
       type: String,
-
       trim: true,
-
       default: ''
-
     },
 
-
     ville: {
-
       type: String,
-
       trim: true,
-
       default: ''
-
     },
 
 
@@ -162,34 +108,22 @@ const userSchema = new mongoose.Schema(
     preferences: {
 
       categories: {
-
         type: [String],
-
         default: []
-
       },
-
 
       notifications: {
-
         type: Boolean,
-
         default: true
-
       },
 
-
       langue: {
-
         type: String,
-
         enum: [
           'fr',
           'ln'
         ],
-
         default: 'fr'
-
       }
 
     },
@@ -200,11 +134,8 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     profilComplete: {
-
       type: Boolean,
-
       default: false
-
     },
 
 
@@ -213,16 +144,12 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     role: {
-
       type: String,
-
       enum: [
         'user',
         'admin'
       ],
-
       default: 'user'
-
     },
 
 
@@ -231,11 +158,8 @@ const userSchema = new mongoose.Schema(
     // =================================================
 
     derniereConnexion: {
-
       type: Date,
-
       default: Date.now
-
     }
 
   },
@@ -246,9 +170,7 @@ const userSchema = new mongoose.Schema(
   // ===================================================
 
   {
-
     timestamps: true
-
   }
 
 );
@@ -260,7 +182,4 @@ const userSchema = new mongoose.Schema(
 
 module.exports =
   mongoose.models.User ||
-  mongoose.model(
-    'User',
-    userSchema
-  );
+  mongoose.model('User', userSchema);

@@ -197,6 +197,11 @@ const formatUser = (user) => {
 // Création d'un nouveau compte
 // =====================================================
 
+// =====================================================
+// REGISTER
+// Création d'un nouveau compte
+// =====================================================
+
 exports.register = async (req, res) => {
 
     try {
@@ -211,45 +216,31 @@ exports.register = async (req, res) => {
         // BODY
         // =================================================
 
-        console.log("📦 BODY REÇU :", req.body);
+        console.log("📦 BODY REÇU :", {
+            nom: req.body?.nom,
+            email: req.body?.email,
+            password: req.body?.password ? "OUI" : "NON"
+        });
 
 
         const {
             nom,
             email,
             password
-        } = req.body;
-
-
-        console.log("👤 Nom :", nom);
-        console.log("📧 Email :", email);
-        console.log(
-            "🔐 Password reçu :",
-            password ? "OUI" : "NON"
-        );
+        } = req.body || {};
 
 
         // =================================================
         // VALIDATION
         // =================================================
 
-        if (
-            !nom ||
-            !email ||
-            !password
-        ) {
-
-            console.log(
-                "❌ DONNÉES OBLIGATOIRES MANQUANTES"
-            );
-
+        if (!nom || !email || !password) {
 
             return res.status(400).json({
 
                 success: false,
 
-                code:
-                    "MISSING_FIELDS",
+                code: "MISSING_FIELDS",
 
                 message:
                     "Le nom, l'email et le mot de passe sont obligatoires"
@@ -260,7 +251,7 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // TYPES
+        // VALIDATION TYPES
         // =================================================
 
         if (
@@ -269,48 +260,14 @@ exports.register = async (req, res) => {
             typeof password !== "string"
         ) {
 
-            console.log(
-                "❌ TYPES DE DONNÉES INVALIDES"
-            );
-
-
             return res.status(400).json({
 
                 success: false,
 
-                code:
-                    "INVALID_DATA",
+                code: "INVALID_DATA",
 
                 message:
                     "Données invalides"
-
-            });
-
-        }
-
-
-        // =================================================
-        // MOT DE PASSE
-        // =================================================
-
-        if (
-            password.length < 6
-        ) {
-
-            console.log(
-                "❌ MOT DE PASSE TROP COURT"
-            );
-
-
-            return res.status(400).json({
-
-                success: false,
-
-                code:
-                    "PASSWORD_TOO_SHORT",
-
-                message:
-                    "Le mot de passe doit contenir au moins 6 caractères"
 
             });
 
@@ -324,42 +281,21 @@ exports.register = async (req, res) => {
         const nomNormalise =
             nom.trim();
 
-
         const emailNormalise =
-            email
-                .trim()
-                .toLowerCase();
-
-
-        console.log(
-            "👤 Nom normalisé :",
-            nomNormalise
-        );
-
-
-        console.log(
-            "📧 Email normalisé :",
-            emailNormalise
-        );
+            email.trim().toLowerCase();
 
 
         // =================================================
-        // VÉRIFIER NOM
+        // VALIDATION NOM
         // =================================================
 
         if (!nomNormalise) {
-
-            console.log(
-                "❌ NOM VIDE APRÈS NORMALISATION"
-            );
-
 
             return res.status(400).json({
 
                 success: false,
 
-                code:
-                    "NAME_REQUIRED",
+                code: "NAME_REQUIRED",
 
                 message:
                     "Le nom est obligatoire"
@@ -370,22 +306,16 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // VÉRIFIER EMAIL
+        // VALIDATION EMAIL
         // =================================================
 
         if (!emailNormalise) {
-
-            console.log(
-                "❌ EMAIL VIDE APRÈS NORMALISATION"
-            );
-
 
             return res.status(400).json({
 
                 success: false,
 
-                code:
-                    "EMAIL_REQUIRED",
+                code: "EMAIL_REQUIRED",
 
                 message:
                     "L'adresse email est obligatoire"
@@ -396,56 +326,46 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // RECHERCHE UTILISATEUR
+        // VALIDATION PASSWORD
         // =================================================
 
-        console.log("");
+        if (password.length < 6) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                code: "PASSWORD_TOO_SHORT",
+
+                message:
+                    "Le mot de passe doit contenir au moins 6 caractères"
+
+            });
+
+        }
+
+
+        // =================================================
+        // RECHERCHE EMAIL
+        // =================================================
+
         console.log(
-            "🔎 Recherche de l'email dans MongoDB..."
+            "🔎 Recherche email :",
+            emailNormalise
         );
 
 
         const existingUser =
             await User.findOne({
-
-                email:
-                    emailNormalise
-
+                email: emailNormalise
             });
 
 
-        // =================================================
-        // AFFICHER LE RÉSULTAT
-        // =================================================
-
         if (existingUser) {
 
-            console.log("");
             console.log(
-                "❌ EMAIL DÉJÀ PRÉSENT DANS MONGODB"
-            );
-
-
-            console.log(
-                "🆔 ID :",
-                existingUser._id
-            );
-
-
-            console.log(
-                "📧 Email DB :",
+                "❌ EMAIL DÉJÀ EXISTANT :",
                 existingUser.email
-            );
-
-
-            console.log(
-                "👤 Nom DB :",
-                existingUser.nom
-            );
-
-
-            console.log(
-                "=============================================="
             );
 
 
@@ -453,14 +373,12 @@ exports.register = async (req, res) => {
 
                 success: false,
 
-                code:
-                    "EMAIL_ALREADY_EXISTS",
+                code: "EMAIL_ALREADY_EXISTS",
 
                 message:
                     "Cette adresse email est déjà utilisée",
 
-                email:
-                    existingUser.email
+                field: "email"
 
             });
 
@@ -468,7 +386,7 @@ exports.register = async (req, res) => {
 
 
         console.log(
-            "✅ Aucun utilisateur trouvé avec cet email"
+            "✅ Email disponible"
         );
 
 
@@ -494,31 +412,26 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // CRÉER UTILISATEUR
+        // CRÉATION UTILISATEUR
         // =================================================
 
         console.log(
-            "💾 Création de l'utilisateur..."
+            "💾 Création utilisateur MongoDB..."
         );
 
 
         const user =
             await User.create({
 
-                nom:
-                    nomNormalise,
+                nom: nomNormalise,
 
-                email:
-                    emailNormalise,
+                email: emailNormalise,
 
-                password:
-                    hashedPassword,
+                password: hashedPassword,
 
-                profilComplete:
-                    false,
+                profilComplete: false,
 
-                role:
-                    "user"
+                role: "user"
 
             });
 
@@ -528,35 +441,19 @@ exports.register = async (req, res) => {
             "=============================================="
         );
 
-
         console.log(
-            "✅ UTILISATEUR CRÉÉ AVEC SUCCÈS"
+            "✅ UTILISATEUR CRÉÉ"
         );
-
 
         console.log(
             "🆔 ID :",
-            user._id
+            user._id.toString()
         );
-
-
-        console.log(
-            "👤 Nom :",
-            user.nom
-        );
-
 
         console.log(
             "📧 Email :",
             user.email
         );
-
-
-        console.log(
-            "👑 Role :",
-            user.role
-        );
-
 
         console.log(
             "=============================================="
@@ -564,20 +461,15 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // JWT
+        // GÉNÉRER JWT
         // =================================================
-
-        console.log(
-            "🔑 Génération du JWT..."
-        );
-
 
         const token =
             generateToken(user);
 
 
         console.log(
-            "✅ JWT généré"
+            "🔐 JWT généré"
         );
 
 
@@ -602,44 +494,33 @@ exports.register = async (req, res) => {
 
     } catch (error) {
 
-
-        // =================================================
-        // ERREUR GLOBALE
-        // =================================================
-
         console.error("");
         console.error(
             "=============================================="
         );
 
-
         console.error(
             "❌ REGISTER ERROR"
         );
 
-
         console.error(
             "=============================================="
         );
-
 
         console.error(
             "Message :",
             error.message
         );
 
-
-        console.error(
-            "Name :",
-            error.name
-        );
-
-
         console.error(
             "Code :",
             error.code
         );
 
+        console.error(
+            "Key Pattern :",
+            error.keyPattern
+        );
 
         console.error(
             "Key Value :",
@@ -647,55 +528,24 @@ exports.register = async (req, res) => {
         );
 
 
-        console.error(
-            "Key Pattern :",
-            error.keyPattern
-        );
-
-
-        console.error(
-            "Erreur complète :",
-            error
-        );
-
-
-        console.error(
-            "=============================================="
-        );
-
-
         // =================================================
-        // DUPLICATE KEY MONGODB
+        // DUPLICATE KEY
         // =================================================
 
-        if (
-            error.code === 11000
-        ) {
+        if (error.code === 11000) {
 
-            console.error(
-                "⚠️ DUPLICATE KEY MONGODB"
-            );
-
-
-            console.error(
-                "🔑 Champ concerné :",
+            const duplicateField =
                 error.keyPattern
-            );
+                    ? Object.keys(error.keyPattern)[0]
+                    : null;
 
 
-            console.error(
-                "📦 Valeur concernée :",
-                error.keyValue
-            );
-
-
-            // =============================================
-            // DUPLICATE EMAIL
-            // =============================================
+            // ---------------------------------------------
+            // EMAIL
+            // ---------------------------------------------
 
             if (
-                error.keyPattern &&
-                error.keyPattern.email
+                duplicateField === "email"
             ) {
 
                 return res.status(409).json({
@@ -709,27 +559,16 @@ exports.register = async (req, res) => {
                         "Cette adresse email est déjà utilisée",
 
                     field:
-                        "email",
-
-                    value:
-                        error.keyValue?.email || null
+                        "email"
 
                 });
 
             }
 
 
-            // =============================================
-            // AUTRE CHAMP UNIQUE
-            // =============================================
-
-            const duplicateField =
-                error.keyPattern
-                    ? Object.keys(
-                        error.keyPattern
-                    )[0]
-                    : null;
-
+            // ---------------------------------------------
+            // AUTRE DUPLICATION
+            // ---------------------------------------------
 
             return res.status(409).json({
 
@@ -742,14 +581,7 @@ exports.register = async (req, res) => {
                     `Une valeur existe déjà pour le champ "${duplicateField || "inconnu"}"`,
 
                 field:
-                    duplicateField,
-
-                value:
                     duplicateField
-                        ? error.keyValue?.[
-                            duplicateField
-                        ]
-                        : null
 
             });
 
@@ -757,18 +589,12 @@ exports.register = async (req, res) => {
 
 
         // =================================================
-        // ERREUR MONGOOSE VALIDATION
+        // VALIDATION MONGOOSE
         // =================================================
 
         if (
-            error.name ===
-            "ValidationError"
+            error.name === "ValidationError"
         ) {
-
-            console.error(
-                "❌ ERREUR DE VALIDATION MONGOOSE"
-            );
-
 
             return res.status(400).json({
 
@@ -785,10 +611,12 @@ exports.register = async (req, res) => {
                         error.errors || {}
                     ).map(
                         field => ({
+
                             field,
+
                             message:
-                                error.errors[field]
-                                    ?.message
+                                error.errors[field]?.message
+
                         })
                     )
 
