@@ -312,32 +312,64 @@ const ajouterCommentaire = async (req, res) => {
 // =====================================================
 
 const supprimerArticle = async (req, res) => {
-
   try {
     const { id } = req.params;
-    const articleSupprime = await Article.findByIdAndDelete(id);
 
-    if (!articleSupprime) {
+    // 1️⃣ Récupérer l'article AVANT suppression
+    const article = await Article.findById(id);
+
+    if (!article) {
       return res.status(404).json({
         success: false,
-        message: 'Article introuvable.'
+        message: "Article introuvable."
       });
     }
 
+    // 2️⃣ Supprimer les images de Cloudflare R2
+    if (article.images && article.images.length > 0) {
+      for (const imageUrl of article.images) {
+
+        // Exemple :
+        // https://pub-xxx.r2.dev/articles/172458923-image.jpg
+
+        const key = imageUrl.replace(`${R2_PUBLIC_URL}/`, "");
+
+        try {
+          await s3.send(
+            new DeleteObjectCommand({
+              Bucket: process.env.R2_BUCKET_NAME,
+              Key: key
+            })
+          );
+
+          console.log(`🗑️ Image R2 supprimée : ${key}`);
+
+        } catch (r2Error) {
+          console.error(
+            `❌ Erreur suppression R2 pour ${key}:`,
+            r2Error.message
+          );
+        }
+      }
+    }
+
+    // 3️⃣ Supprimer l'article MongoDB
+    await Article.findByIdAndDelete(id);
+
     return res.status(200).json({
       success: true,
-      message: 'Article supprimé avec succès.'
+      message: "Article et fichiers associés supprimés avec succès."
     });
 
   } catch (error) {
-    console.error('❌ Erreur suppression article :', error);
+    console.error("❌ Erreur suppression article :", error);
+
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la suppression de l\'article.',
+      message: "Erreur lors de la suppression de l'article.",
       error: error.message
     });
   }
-
 };
 
 // =====================================================
