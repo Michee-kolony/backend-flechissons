@@ -795,6 +795,72 @@ exports.login = async (req, res) => {
 
 
 // =====================================================
+// GET TOUS LES UTILISATEURS
+// =====================================================
+
+exports.getUsers = async (req, res) => {
+
+    try {
+
+        // ==============================================
+        // RÉCUPÉRER TOUS LES UTILISATEURS
+        // ==============================================
+
+        const users = await User
+            .find()
+            .sort({ createdAt: -1 });
+
+
+        // ==============================================
+        // FORMATER LES UTILISATEURS
+        // ==============================================
+
+        const utilisateurs = users.map(user =>
+            formatUser(user)
+        );
+
+
+        // ==============================================
+        // RÉPONSE
+        // ==============================================
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                "Utilisateurs récupérés avec succès",
+
+            total:
+                utilisateurs.length,
+
+            utilisateurs
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "❌ GET USERS ERROR :",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Erreur lors de la récupération des utilisateurs"
+
+        });
+
+    }
+
+};
+
+
+// =====================================================
 // GET PROFILE
 // =====================================================
 

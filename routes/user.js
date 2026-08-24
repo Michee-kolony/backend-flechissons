@@ -15,11 +15,11 @@ const upload =
 // ======================================================
 // CONTROLLER
 // ======================================================
-
 const {
     register,
     login,
     getProfile,
+    getUsers,
     updateProfile,
     forgotPassword,
     resetPassword,
@@ -35,6 +35,16 @@ const {
 router.post(
     '/register',
     register
+);
+
+
+// ======================================================
+// RÉCUPÉRER TOUS LES UTILISATEURS
+// ======================================================
+
+router.get(
+    '/',
+    getUsers
 );
 
 
