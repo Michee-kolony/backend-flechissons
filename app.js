@@ -26,10 +26,10 @@ const app = express();
 // ===============================
 
 mongoose.connect(
-  'mongodb://kolony:1708roosevelt@187.124.114.57:27017/flechissons?authSource=admin'
+  'mongodb://kolony:1708roosevelt@187.7.27.156:27017/flechissons?authSource=flechissons'
 )
 .then(() => {
-  console.log('Connecté à MongoDB Flechissons');
+  console.log('Connecté à MongoDB Flechissons sur vps');
 })
 .catch((err) => {
   console.error('Erreur MongoDB:', err);
