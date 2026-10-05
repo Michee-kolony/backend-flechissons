@@ -4,7 +4,9 @@ const jwt = require('jsonwebtoken');
 
 exports.register = (req, res) => {
 
-    const { nom, email, password } = req.body;
+    const { nom, email, password, role } = req.body;
+
+    const roleFinal = role === 'superadmin' ? 'superadmin' : 'admin';
 
     bcrypt.hash(password, 10)
         .then(passwordHash => {
@@ -12,7 +14,8 @@ exports.register = (req, res) => {
             const admin = new Admin({
                 nom: nom,
                 email: email,
-                password: passwordHash
+                password: passwordHash,
+                role: roleFinal
             });
 
             return admin.save();
@@ -25,7 +28,8 @@ exports.register = (req, res) => {
                 admin: {
                     id: admin._id,
                     nom: admin.nom,
-                    email: admin.email
+                    email: admin.email,
+                    role: admin.role
                 }
             });
 
@@ -103,8 +107,28 @@ exports.login = (req, res) => {
 
 exports.getalladmin = (req, res)=>{
 
-    Admin.find()
+    Admin.find().select('-password')
          .then(data=>res.status(200).json(data))
          .catch(error=>res.status(500).json(error))
+
+}
+
+exports.deleteAdmin = (req, res)=>{
+
+    if (req.params.id === String(req.adminId)) {
+        return res.status(400).json({ message: "Vous ne pouvez pas supprimer votre propre compte" });
+    }
+
+    Admin.findByIdAndDelete(req.params.id)
+         .then(admin=>{
+
+            if (!admin) {
+                return res.status(404).json({ message: "Administrateur introuvable" });
+            }
+
+            res.status(200).json({ message: "Administrateur supprimé avec succès" });
+
+         })
+         .catch(error=>res.status(500).json({ message: "Erreur serveur", error: error.message }))
 
 }
