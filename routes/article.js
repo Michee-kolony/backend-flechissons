@@ -15,6 +15,8 @@ const {
     supprimerArticle
 } = require("../controllers/articleController");
 
+const { abonner } = require("../realtime/articleEvents");
+
 
 // =====================================================
 // MIDDLEWARE UPLOAD IMAGES
@@ -128,6 +130,18 @@ router.post(
 router.get(
     "/",
     getArticles
+);
+
+
+// =====================================================
+// FLUX TEMPS RÉEL (likes / commentaires)
+// GET /article/events
+// Doit rester avant "/:id"
+// =====================================================
+
+router.get(
+    "/events",
+    abonner
 );
 
 

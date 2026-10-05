@@ -2,6 +2,7 @@
 const Article = require("../models/article");
 const Utilisateur = require("../models/user");
 const multer = require("multer");
+const { diffuser } = require("../realtime/articleEvents");
 
 // ===============================
 // URL PUBLIQUE R2
@@ -167,6 +168,11 @@ const toggleLike = async (req, res) => {
 
     await articleTrouve.save();
 
+    diffuser('like', {
+      articleId: articleTrouve._id,
+      likes: articleTrouve.likes
+    });
+
     return res.status(200).json({
       success: true,
       message: dejaLike ? 'Like retiré.' : 'Article aimé.',
@@ -281,18 +287,25 @@ const ajouterCommentaire = async (req, res) => {
 
     const commentaireAjoute = articleTrouve.commentaires[articleTrouve.commentaires.length - 1];
 
+    const commentaire = {
+      _id: commentaireAjoute._id,
+      utilisateurId: commentaireAjoute.utilisateurId,
+      nom: commentaireAjoute.nom,
+      prenom: commentaireAjoute.prenom,
+      photo: commentaireAjoute.photo,
+      contenu: commentaireAjoute.contenu,
+      createdAt: commentaireAjoute.createdAt
+    };
+
+    diffuser('commentaire', {
+      articleId: articleTrouve._id,
+      commentaire
+    });
+
     return res.status(201).json({
       success: true,
       message: 'Commentaire ajouté avec succès.',
-      commentaire: {
-        _id: commentaireAjoute._id,
-        utilisateurId: commentaireAjoute.utilisateurId,
-        nom: commentaireAjoute.nom,
-        prenom: commentaireAjoute.prenom,
-        photo: commentaireAjoute.photo,
-        contenu: commentaireAjoute.contenu,
-        createdAt: commentaireAjoute.createdAt
-      },
+      commentaire,
       totalCommentaires: articleTrouve.commentaires.length
     });
 
