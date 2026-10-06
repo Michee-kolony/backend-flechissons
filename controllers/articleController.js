@@ -3,6 +3,8 @@ const Article = require("../models/article");
 const Utilisateur = require("../models/user");
 const multer = require("multer");
 const { diffuser } = require("../realtime/articleEvents");
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const s3 = require("../config/r2");
 
 // ===============================
 // URL PUBLIQUE R2
@@ -10,6 +12,8 @@ const { diffuser } = require("../realtime/articleEvents");
 
 const R2_PUBLIC_URL =
   'https://pub-d21c8c5e48fb4a35ace1050c88bc8b91.r2.dev';
+
+const R2_BUCKET = 'flechissons';
 
 // =====================================================
 // CRÉER UN ARTICLE
@@ -454,7 +458,7 @@ const supprimerArticle = async (req, res) => {
         try {
           await s3.send(
             new DeleteObjectCommand({
-              Bucket: process.env.R2_BUCKET_NAME,
+              Bucket: R2_BUCKET,
               Key: key
             })
           );
