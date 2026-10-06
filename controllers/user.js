@@ -1060,6 +1060,7 @@ exports.updateProfile = async (req, res) => {
         // =================================================
 
         const {
+            nom,
             prenom,
             sexe,
             dateNaissance,
@@ -1069,6 +1070,60 @@ exports.updateProfile = async (req, res) => {
             notifications,
             langue
         } = req.body || {};
+
+
+        // =================================================
+        // NOM
+        // =================================================
+
+        if (nom !== undefined) {
+
+            const nomNettoye =
+                typeof nom === "string"
+                    ? nom.trim()
+                    : "";
+
+            if (!nomNettoye) {
+
+                if (req.file && req.file.key) {
+                    await supprimerPhotoR2(
+                        `${R2_PUBLIC_URL}/${req.file.key}`
+                    );
+                }
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Le nom ne peut pas être vide"
+
+                });
+
+            }
+
+            if (nomNettoye.length > 50) {
+
+                if (req.file && req.file.key) {
+                    await supprimerPhotoR2(
+                        `${R2_PUBLIC_URL}/${req.file.key}`
+                    );
+                }
+
+                return res.status(400).json({
+
+                    success: false,
+
+                    message:
+                        "Le nom ne peut pas dépasser 50 caractères"
+
+                });
+
+            }
+
+            user.nom = nomNettoye;
+
+        }
 
 
         // =================================================

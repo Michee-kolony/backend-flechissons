@@ -197,6 +197,7 @@ const uploadProfile = (req, res, next) => {
 // PUT /user/profile
 //
 // Peut recevoir :
+// - nom
 // - prenom
 // - sexe
 // - dateNaissance
