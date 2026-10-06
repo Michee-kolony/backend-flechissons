@@ -8,8 +8,8 @@ const router = express.Router();
 // MULTER / R2
 // ======================================================
 
-const upload =
-    require('../middlewares/upload');
+const uploadProfil =
+    require('../middlewares/uploadProfil');
 
 
 // ======================================================
@@ -74,7 +74,7 @@ router.get(
 
 const uploadProfile = (req, res, next) => {
 
-    upload.single('photo')(
+    uploadProfil.single('photo')(
         req,
         res,
         (err) => {
@@ -116,7 +116,7 @@ const uploadProfile = (req, res, next) => {
                 const messages = {
 
                     LIMIT_FILE_SIZE:
-                        'La photo dépasse la taille maximale de 5 Mo.',
+                        `La photo dépasse la taille maximale de ${uploadProfil.TAILLE_MAX_MO} Mo.`,
 
                     LIMIT_FILE_COUNT:
                         'Une seule photo est autorisée.',
@@ -159,7 +159,7 @@ const uploadProfile = (req, res, next) => {
                         'INVALID_IMAGE_FORMAT',
 
                     message:
-                        'Format non autorisé. Utilisez JPG, PNG ou WEBP.'
+                        'Format non autorisé. Utilisez JPG, PNG, WEBP, AVIF, HEIC, BMP ou TIFF (GIF et SVG refusés).'
 
                 });
 

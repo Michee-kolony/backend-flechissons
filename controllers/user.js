@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const r2 = require("../config/r2");
 
 
 // =====================================================
@@ -955,10 +957,50 @@ const R2_PUBLIC_URL =
 
 
 // =====================================================
+// SUPPRIMER UNE PHOTO DU BUCKET R2
+// Ne touche qu'aux fichiers hébergés sur notre bucket
+// (ignore les URLs externes, ex: avatar Google)
+// =====================================================
+
+const supprimerPhotoR2 = async (photoUrl) => {
+
+    if (!photoUrl || !photoUrl.startsWith(`${R2_PUBLIC_URL}/`)) {
+        return;
+    }
+
+    const key = photoUrl.replace(`${R2_PUBLIC_URL}/`, "");
+
+    try {
+
+        await r2.send(
+            new DeleteObjectCommand({
+                Bucket: "flechissons",
+                Key: key
+            })
+        );
+
+        console.log(`🗑️ Photo R2 supprimée : ${key}`);
+
+    } catch (error) {
+
+        // On ne bloque pas la mise à jour du profil si la suppression échoue
+        console.error(
+            `❌ Erreur suppression photo R2 (${key}) :`,
+            error.message
+        );
+
+    }
+
+};
+
+
+// =====================================================
 // UPDATE PROFILE
 // =====================================================
 
 exports.updateProfile = async (req, res) => {
+
+    let anciennePhoto = null;
 
     try {
 
@@ -1149,6 +1191,10 @@ exports.updateProfile = async (req, res) => {
             // NE PAS utiliser req.file.location
             // =============================================
 
+            // Mémoriser l'ancienne photo pour la supprimer
+            // une fois le profil sauvegardé
+            anciennePhoto = user.photo;
+
             user.photo =
                 `${R2_PUBLIC_URL}/${req.file.key}`;
 
@@ -1201,6 +1247,17 @@ exports.updateProfile = async (req, res) => {
             "💾 Utilisateur sauvegardé dans MongoDB"
         );
 
+
+        // =================================================
+        // SUPPRIMER L'ANCIENNE PHOTO DU BUCKET
+        // =================================================
+
+        if (anciennePhoto && anciennePhoto !== user.photo) {
+
+            await supprimerPhotoR2(anciennePhoto);
+
+        }
+
         console.log(
             "📸 Photo finale :",
             user.photo
@@ -1225,6 +1282,20 @@ exports.updateProfile = async (req, res) => {
 
 
     } catch (error) {
+
+
+        // =================================================
+        // ÉCHEC : SUPPRIMER LA NOUVELLE PHOTO DÉJÀ UPLOADÉE
+        // (évite les fichiers orphelins dans le bucket)
+        // =================================================
+
+        if (req.file && req.file.key) {
+
+            await supprimerPhotoR2(
+                `${R2_PUBLIC_URL}/${req.file.key}`
+            );
+
+        }
 
 
         const jwtResponse =
