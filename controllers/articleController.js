@@ -321,6 +321,110 @@ const ajouterCommentaire = async (req, res) => {
 };
 
 // =====================================================
+// MODIFIER UN COMMENTAIRE
+// =====================================================
+
+const modifierCommentaire = async (req, res) => {
+
+  try {
+    const { id, commentaireId } = req.params;
+    const { utilisateurId, contenu } = req.body;
+
+    // ===============================
+    // VALIDATION
+    // ===============================
+
+    if (!utilisateurId || !contenu) {
+      return res.status(400).json({
+        success: false,
+        message: 'utilisateurId et contenu sont obligatoires.'
+      });
+    }
+
+    if (contenu.trim().length < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le commentaire ne peut pas être vide.'
+      });
+    }
+
+    if (contenu.trim().length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le commentaire ne peut pas dépasser 500 caractères.'
+      });
+    }
+
+    // ===============================
+    // RÉCUPÉRER L'ARTICLE ET LE COMMENTAIRE
+    // ===============================
+
+    const articleTrouve = await Article.findById(id);
+
+    if (!articleTrouve) {
+      return res.status(404).json({
+        success: false,
+        message: 'Article introuvable.'
+      });
+    }
+
+    const commentaireTrouve = articleTrouve.commentaires.id(commentaireId);
+
+    if (!commentaireTrouve) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire introuvable.'
+      });
+    }
+
+    // ===============================
+    // SEUL L'AUTEUR PEUT MODIFIER
+    // ===============================
+
+    if (commentaireTrouve.utilisateurId.toString() !== utilisateurId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez modifier que vos propres commentaires.'
+      });
+    }
+
+    commentaireTrouve.contenu = contenu.trim();
+    await articleTrouve.save();
+
+    const commentaire = {
+      _id: commentaireTrouve._id,
+      utilisateurId: commentaireTrouve.utilisateurId,
+      nom: commentaireTrouve.nom,
+      prenom: commentaireTrouve.prenom,
+      photo: commentaireTrouve.photo,
+      contenu: commentaireTrouve.contenu,
+      createdAt: commentaireTrouve.createdAt,
+      updatedAt: commentaireTrouve.updatedAt
+    };
+
+    diffuser('commentaire-modifie', {
+      articleId: articleTrouve._id,
+      commentaire
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Commentaire modifié avec succès.',
+      commentaire
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur modification commentaire:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la modification du commentaire.',
+      error: error.message
+    });
+  }
+
+};
+
+// =====================================================
 // SUPPRIMER UN ARTICLE
 // =====================================================
 
@@ -395,5 +499,6 @@ module.exports = {
   getArticle,
   toggleLike,
   ajouterCommentaire,
+  modifierCommentaire,
   supprimerArticle
 };

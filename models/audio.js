@@ -38,7 +38,7 @@ const audioSchema = new mongoose.Schema(
 
     categorie: {
       type: String,
-      enum: ['priere', 'miracles', 'esperances'],
+      enum: ['priere', 'miracles', 'esperances', 'temoignages', 'autres'],
       required: true
     },
 

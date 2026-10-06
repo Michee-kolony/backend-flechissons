@@ -12,6 +12,7 @@ const {
     getArticle,
     toggleLike,
     ajouterCommentaire,
+    modifierCommentaire,
     supprimerArticle
 } = require("../controllers/articleController");
 
@@ -175,6 +176,17 @@ router.put(
 router.post(
     "/:id/commentaire",
     ajouterCommentaire
+);
+
+
+// =====================================================
+// MODIFIER UN COMMENTAIRE
+// PUT /article/:id/commentaire/:commentaireId
+// =====================================================
+
+router.put(
+    "/:id/commentaire/:commentaireId",
+    modifierCommentaire
 );
 
 
