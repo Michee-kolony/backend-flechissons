@@ -8,7 +8,8 @@ const {
     creerDepot,
     webhook,
     statutDepot,
-    listerPaiements
+    listerPaiements,
+    detailsPaiement
 } = require('../controllers/pawapay');
 
 
@@ -40,6 +41,12 @@ router.get(
     '/admin/paiements',
     auth,
     listerPaiements
+);
+
+router.get(
+    '/admin/paiements/:id',
+    auth,
+    detailsPaiement
 );
 
 

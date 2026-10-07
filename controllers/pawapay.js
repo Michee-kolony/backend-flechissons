@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const Paiement = require('../models/paiement');
 require('../models/user'); // pour populate('utilisateurId')
@@ -526,11 +527,24 @@ exports.statutDepot = async (req, res) => {
 
 
 // =====================================================
-// LISTE DES PAIEMENTS (ADMIN)
+// PAIEMENTS (ADMIN)
 // =====================================================
+
+// Ce que l'admin voit d'un paiement (document lean)
+const formatPaiementAdmin = (paiement) => ({
+    ...paiement,
+    operateurNom: Paiement.OPERATEURS[paiement.operateur]?.nom || paiement.operateur,
+    message:
+        paiement.statut === 'echoue'
+            ? (MESSAGES_ECHEC[paiement.echec?.code] || paiement.echec?.message || MESSAGE_ECHEC_DEFAUT)
+            : null
+});
+
+const CHAMPS_FIDELE = 'nom prenom email telephone';
+
+
 // GET /api/pawapay/admin/paiements
 // Tous les paiements des fidèles, du plus récent au plus ancien
-// =====================================================
 
 exports.listerPaiements = async (req, res) => {
 
@@ -538,20 +552,11 @@ exports.listerPaiements = async (req, res) => {
 
         const paiements = await Paiement.find()
             .select('-callback')
-            .populate('utilisateurId', 'nom prenom email telephone')
+            .populate('utilisateurId', CHAMPS_FIDELE)
             .sort({ createdAt: -1 })
             .lean();
 
-        return res.status(200).json(
-            paiements.map(paiement => ({
-                ...paiement,
-                operateurNom: Paiement.OPERATEURS[paiement.operateur]?.nom || paiement.operateur,
-                message:
-                    paiement.statut === 'echoue'
-                        ? (MESSAGES_ECHEC[paiement.echec?.code] || paiement.echec?.message || MESSAGE_ECHEC_DEFAUT)
-                        : null
-            }))
-        );
+        return res.status(200).json(paiements.map(formatPaiementAdmin));
 
     } catch (error) {
 
@@ -560,6 +565,48 @@ exports.listerPaiements = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération des paiements.'
+        });
+
+    }
+
+};
+
+
+// GET /api/pawapay/admin/paiements/:id
+// Détails d'un paiement
+
+exports.detailsPaiement = async (req, res) => {
+
+    try {
+
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(404).json({
+                success: false,
+                message: 'Paiement introuvable.'
+            });
+        }
+
+        const paiement = await Paiement.findById(req.params.id)
+            .select('-callback')
+            .populate('utilisateurId', CHAMPS_FIDELE)
+            .lean();
+
+        if (!paiement) {
+            return res.status(404).json({
+                success: false,
+                message: 'Paiement introuvable.'
+            });
+        }
+
+        return res.status(200).json(formatPaiementAdmin(paiement));
+
+    } catch (error) {
+
+        console.error('❌ ERREUR DÉTAILS PAIEMENT :', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération du paiement.'
         });
 
     }
