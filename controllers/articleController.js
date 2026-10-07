@@ -3,7 +3,7 @@ const Article = require("../models/article");
 const Utilisateur = require("../models/user");
 const multer = require("multer");
 const { diffuser } = require("../realtime/articleEvents");
-const { envoyerATous, envoyerAUtilisateurs, routes } = require("../services/notification");
+const { envoyerATous, envoyerAUtilisateurs, imageArticle, routes } = require("../services/notification");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require("../config/r2");
 
@@ -83,6 +83,7 @@ const creerArticle = async (req, res) => {
       titre: TITRES_NOTIFICATION[nouvelArticle.type] || '📰 Nouvelle publication',
       message: nouvelArticle.titre,
       route: routes.article(nouvelArticle._id),
+      image: imageArticle(nouvelArticle),
       data: { type: 'article', articleId: nouvelArticle._id }
     });
 
@@ -218,6 +219,7 @@ const toggleLike = async (req, res) => {
             titre: `❤️ ${nomComplet(auteur?.prenom, auteur?.nom)} a aimé une publication`,
             message: articleTrouve.titre,
             route: routes.article(articleTrouve._id),
+            image: imageArticle(articleTrouve),
             data: { type: 'like', articleId: articleTrouve._id }
           }))
           .catch(err => console.error('❌ Notification like :', err.message));
@@ -357,6 +359,7 @@ const ajouterCommentaire = async (req, res) => {
       titre: `💬 ${nomComplet(commentaire.prenom, commentaire.nom)} a commenté « ${articleTrouve.titre} »`,
       message: commentaire.contenu,
       route: routes.commentaire(articleTrouve._id, commentaire._id),
+      image: imageArticle(articleTrouve),
       data: { type: 'commentaire', articleId: articleTrouve._id, commentaireId: commentaire._id }
     });
 

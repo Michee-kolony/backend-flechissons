@@ -76,25 +76,56 @@ const versData = (data) => {
   return resultat;
 };
 
-const construireMessage = ({ titre, message, route, data }) => ({
-  notification: {
-    title: tronquer(titre, 100),
-    body: tronquer(message, 200)
-  },
-  data: versData({ ...data, route }),
-  android: {
-    priority: 'high',
+// Image affichée en grand dans la notification (HTTPS uniquement)
+const imageValide = (image) =>
+  typeof image === 'string' && image.startsWith('https://') ? image : undefined;
+
+const construireMessage = ({ titre, message, route, data, image }) => {
+
+  const imageUrl = imageValide(image);
+
+  return {
     notification: {
-      channelId: 'flechissons',
-      sound: 'default'
+      title: tronquer(titre, 100),
+      body: tronquer(message, 200),
+      ...(imageUrl && { imageUrl })
+    },
+    data: versData({ ...data, route }),
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'flechissons',
+        sound: 'default'
+      }
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: 'default',
+          ...(imageUrl && { 'mutable-content': 1 })
+        }
+      },
+      ...(imageUrl && { fcmOptions: { imageUrl } })
     }
-  },
-  apns: {
-    payload: {
-      aps: { sound: 'default' }
-    }
+  };
+
+};
+
+// Image d'un article : 1re image, sinon miniature de la vidéo YouTube
+const imageArticle = (article) => {
+
+  if (article?.images?.length) {
+    return article.images[0];
   }
-});
+
+  const idYoutube = String(article?.youtube || '')
+    .match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([\w-]{11})/)?.[1];
+
+  return idYoutube
+    ? `https://img.youtube.com/vi/${idYoutube}/hqdefault.jpg`
+    : undefined;
+
+};
 
 // =====================================================
 // NETTOYAGE DES TOKENS MORTS
@@ -122,7 +153,7 @@ const supprimerTokensMorts = async (tokens) => {
 // ENVOI À TOUS LES APPAREILS (TOPIC "tous")
 // =====================================================
 
-const envoyerATous = async ({ titre, message, route, data }) => {
+const envoyerATous = async ({ titre, message, route, data, image }) => {
 
   const fcm = getMessagingFirebase();
   if (!fcm) {
@@ -131,7 +162,7 @@ const envoyerATous = async ({ titre, message, route, data }) => {
 
   try {
     await fcm.send({
-      ...construireMessage({ titre, message, route, data }),
+      ...construireMessage({ titre, message, route, data, image }),
       topic: TOPIC_TOUS
     });
     console.log(`🔔 Notification envoyée à tous : ${titre}`);
@@ -149,7 +180,7 @@ const envoyerATous = async ({ titre, message, route, data }) => {
 // notifications activées sont notifiés.
 // =====================================================
 
-const envoyerAUtilisateurs = async (userIds, { titre, message, route, data }) => {
+const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image }) => {
 
   const fcm = getMessagingFirebase();
   if (!fcm || !userIds || !userIds.length) {
@@ -171,7 +202,7 @@ const envoyerAUtilisateurs = async (userIds, { titre, message, route, data }) =>
       return;
     }
 
-    const base = construireMessage({ titre, message, route, data });
+    const base = construireMessage({ titre, message, route, data, image });
     const tokensMorts = [];
 
     for (const lot of decouper(tokens, TAILLE_LOT)) {
@@ -265,5 +296,6 @@ module.exports = {
   envoyerAUtilisateurs,
   abonnerAppareil,
   synchroniserAbonnementUtilisateur,
+  imageArticle,
   routes
 };

@@ -214,6 +214,7 @@ const createAudio = async (req, res) => {
       titre: '🎧 Nouvel audio',
       message: `${audio.nom} — ${audio.personne}`,
       route: routes.audio(audio._id),
+      image: audio.photoCouverture,
       data: { type: 'audio', audioId: audio._id }
     });
 
