@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const Paiement = require('../models/paiement');
+require('../models/user'); // pour populate('utilisateurId')
 const {
     getLimitesOperateur,
     formaterMontant,
@@ -517,6 +518,48 @@ exports.statutDepot = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération du paiement.'
+        });
+
+    }
+
+};
+
+
+// =====================================================
+// LISTE DES PAIEMENTS (ADMIN)
+// =====================================================
+// GET /api/pawapay/admin/paiements
+// Tous les paiements des fidèles, du plus récent au plus ancien
+// =====================================================
+
+exports.listerPaiements = async (req, res) => {
+
+    try {
+
+        const paiements = await Paiement.find()
+            .select('-callback')
+            .populate('utilisateurId', 'nom prenom email telephone')
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return res.status(200).json(
+            paiements.map(paiement => ({
+                ...paiement,
+                operateurNom: Paiement.OPERATEURS[paiement.operateur]?.nom || paiement.operateur,
+                message:
+                    paiement.statut === 'echoue'
+                        ? (MESSAGES_ECHEC[paiement.echec?.code] || paiement.echec?.message || MESSAGE_ECHEC_DEFAUT)
+                        : null
+            }))
+        );
+
+    } catch (error) {
+
+        console.error('❌ ERREUR LISTE PAIEMENTS :', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des paiements.'
         });
 
     }

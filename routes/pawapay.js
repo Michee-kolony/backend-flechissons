@@ -2,10 +2,13 @@ const express = require('express');
 
 const router = express.Router();
 
+const { auth } = require('../middlewares/auth');
+
 const {
     creerDepot,
     webhook,
-    statutDepot
+    statutDepot,
+    listerPaiements
 } = require('../controllers/pawapay');
 
 
@@ -26,6 +29,17 @@ router.post(
 router.get(
     '/depot/:depositId',
     statutDepot
+);
+
+
+// ======================================================
+// LISTE DES PAIEMENTS (ADMIN)
+// ======================================================
+
+router.get(
+    '/admin/paiements',
+    auth,
+    listerPaiements
 );
 
 
