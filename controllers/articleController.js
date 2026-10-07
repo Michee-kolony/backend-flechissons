@@ -3,6 +3,7 @@ const Article = require("../models/article");
 const Utilisateur = require("../models/user");
 const multer = require("multer");
 const { diffuser } = require("../realtime/articleEvents");
+const { envoyerATous, envoyerAUtilisateurs, routes } = require("../services/notification");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require("../config/r2");
 
@@ -14,6 +15,29 @@ const R2_PUBLIC_URL =
   'https://pub-d21c8c5e48fb4a35ace1050c88bc8b91.r2.dev';
 
 const R2_BUCKET = 'flechissons';
+
+// ===============================
+// NOTIFICATIONS
+// ===============================
+
+const TITRES_NOTIFICATION = {
+  annonces: '📢 Nouvelle annonce',
+  predications: '📖 Nouvelle prédication',
+  exhortations: '🙏 Nouvelle exhortation'
+};
+
+const nomComplet = (prenom, nom) =>
+  [prenom, nom].filter(Boolean).join(' ').trim() || "Quelqu'un";
+
+// Clients ayant déjà commenté (et éventuellement liké) l'article, sauf "exclu"
+const participantsArticle = (article, exclu, avecLikes) => {
+  const ids = article.commentaires.map(c => c.utilisateurId);
+  if (avecLikes) {
+    ids.push(...article.likes);
+  }
+  return [...new Set(ids.filter(Boolean).map(String))]
+    .filter(id => id !== String(exclu));
+};
 
 // =====================================================
 // CRÉER UN ARTICLE
@@ -53,6 +77,13 @@ const creerArticle = async (req, res) => {
       images,
       likes: [],
       commentaires: []
+    });
+
+    envoyerATous({
+      titre: TITRES_NOTIFICATION[nouvelArticle.type] || '📰 Nouvelle publication',
+      message: nouvelArticle.titre,
+      route: routes.article(nouvelArticle._id),
+      data: { type: 'article', articleId: nouvelArticle._id }
     });
 
     return res.status(201).json({
@@ -176,6 +207,22 @@ const toggleLike = async (req, res) => {
       articleId: articleTrouve._id,
       likes: articleTrouve.likes
     });
+
+    // Notification uniquement pour un nouveau like (pas quand on le retire)
+    if (!dejaLike) {
+      const destinataires = participantsArticle(articleTrouve, utilisateurId, false);
+
+      if (destinataires.length) {
+        Utilisateur.findById(utilisateurId).select('nom prenom')
+          .then(auteur => envoyerAUtilisateurs(destinataires, {
+            titre: `❤️ ${nomComplet(auteur?.prenom, auteur?.nom)} a aimé une publication`,
+            message: articleTrouve.titre,
+            route: routes.article(articleTrouve._id),
+            data: { type: 'like', articleId: articleTrouve._id }
+          }))
+          .catch(err => console.error('❌ Notification like :', err.message));
+      }
+    }
 
     return res.status(200).json({
       success: true,
@@ -304,6 +351,13 @@ const ajouterCommentaire = async (req, res) => {
     diffuser('commentaire', {
       articleId: articleTrouve._id,
       commentaire
+    });
+
+    envoyerAUtilisateurs(participantsArticle(articleTrouve, utilisateurId, true), {
+      titre: `💬 ${nomComplet(commentaire.prenom, commentaire.nom)} a commenté « ${articleTrouve.titre} »`,
+      message: commentaire.contenu,
+      route: routes.commentaire(articleTrouve._id, commentaire._id),
+      data: { type: 'commentaire', articleId: articleTrouve._id, commentaireId: commentaire._id }
     });
 
     return res.status(201).json({

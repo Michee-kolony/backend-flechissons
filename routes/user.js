@@ -24,7 +24,9 @@ const {
     forgotPassword,
     resetPassword,
     changePassword,
-    deleteAccount
+    deleteAccount,
+    registerFcmToken,
+    removeFcmToken
 } = require('../controllers/user');
 
 
@@ -255,6 +257,21 @@ router.put(
 router.delete(
     '/account',
     deleteAccount
+);
+
+
+// ======================================================
+// NOTIFICATIONS PUSH : TOKEN FCM DE L'APPAREIL
+// ======================================================
+
+router.post(
+    '/fcm-token',
+    registerFcmToken
+);
+
+router.delete(
+    '/fcm-token',
+    removeFcmToken
 );
 
 

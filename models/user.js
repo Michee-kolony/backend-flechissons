@@ -130,6 +130,18 @@ const userSchema = new mongoose.Schema(
 
 
     // =================================================
+    // NOTIFICATIONS PUSH (FCM)
+    // Un token par appareil connecté au compte
+    // =================================================
+
+    fcmTokens: {
+      type: [String],
+      default: [],
+      select: false
+    },
+
+
+    // =================================================
     // PROFIL
     // =================================================
 

@@ -6,6 +6,11 @@ const {
 
 const r2 = require('../config/r2');
 
+const {
+  envoyerATous,
+  routes
+} = require('../services/notification');
+
 
 // =====================================================
 // CONFIGURATION R2
@@ -198,6 +203,18 @@ const createAudio = async (req, res) => {
 
       datePublication:
         datePublication || new Date()
+    });
+
+
+    // =================================================
+    // NOTIFICATION
+    // =================================================
+
+    envoyerATous({
+      titre: '🎧 Nouvel audio',
+      message: `${audio.nom} — ${audio.personne}`,
+      route: routes.audio(audio._id),
+      data: { type: 'audio', audioId: audio._id }
     });
 
 

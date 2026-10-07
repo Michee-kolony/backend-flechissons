@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const r2 = require("../config/r2");
+const { synchroniserAbonnementUtilisateur } = require("../services/notification");
 
 
 // =====================================================
@@ -1303,6 +1304,15 @@ exports.updateProfile = async (req, res) => {
         );
 
 
+        // Préférence notifications modifiée : abonner ou
+        // désabonner ses appareils des notifications générales
+        if (notifications !== undefined) {
+
+            synchroniserAbonnementUtilisateur(user._id);
+
+        }
+
+
         // =================================================
         // SUPPRIMER L'ANCIENNE PHOTO DU BUCKET
         // =================================================
@@ -2071,6 +2081,218 @@ exports.deleteAccount = async (req, res) => {
             message:
                 "Erreur lors de la suppression du compte"
 
+        });
+
+    }
+
+};
+
+// =====================================================
+// ENREGISTRER LE TOKEN FCM DE L'APPAREIL
+// =====================================================
+// POST /user/fcm-token
+// Body : { token }
+// Appelé par l'application après la connexion
+// =====================================================
+
+exports.registerFcmToken = async (req, res) => {
+
+    try {
+
+        // ==============================
+        // VÉRIFIER JWT
+        // ==============================
+
+        const decoded =
+            verifyToken(req);
+
+        const userId =
+            decoded.id;
+
+
+        // ==============================
+        // VALIDATION
+        // ==============================
+
+        const token =
+            typeof req.body.token === "string"
+                ? req.body.token.trim()
+                : "";
+
+        if (!token) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Le token FCM est obligatoire"
+            });
+
+        }
+
+
+        // ==============================
+        // UN APPAREIL = UN SEUL COMPTE
+        // Si un autre compte s'est connecté
+        // sur ce téléphone avant, on lui retire
+        // ==============================
+
+        await User.updateMany(
+            {
+                _id: { $ne: userId },
+                fcmTokens: token
+            },
+            {
+                $pull: { fcmTokens: token }
+            }
+        );
+
+
+        // ==============================
+        // AJOUTER LE TOKEN (SANS DOUBLON)
+        // ==============================
+
+        const user =
+            await User.findByIdAndUpdate(
+                userId,
+                {
+                    $addToSet: { fcmTokens: token }
+                },
+                { new: true }
+            );
+
+        if (!user) {
+
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Utilisateur introuvable"
+            });
+
+        }
+
+
+        // Notifications générales selon la préférence du compte
+        await synchroniserAbonnementUtilisateur(userId);
+
+
+        return res.status(200).json({
+            success: true,
+            message:
+                "Token FCM enregistré"
+        });
+
+
+    } catch (error) {
+
+        const jwtResponse =
+            handleJwtError(
+                error,
+                res
+            );
+
+        if (jwtResponse) {
+            return jwtResponse;
+        }
+
+        console.error(
+            "❌ REGISTER FCM TOKEN ERROR :",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Erreur lors de l'enregistrement du token FCM"
+        });
+
+    }
+
+};
+
+
+// =====================================================
+// SUPPRIMER LE TOKEN FCM DE L'APPAREIL
+// =====================================================
+// DELETE /user/fcm-token
+// Body : { token }
+// Appelé par l'application à la déconnexion
+// =====================================================
+
+exports.removeFcmToken = async (req, res) => {
+
+    try {
+
+        // ==============================
+        // VÉRIFIER JWT
+        // ==============================
+
+        const decoded =
+            verifyToken(req);
+
+        const userId =
+            decoded.id;
+
+
+        // ==============================
+        // VALIDATION
+        // ==============================
+
+        const token =
+            typeof req.body.token === "string"
+                ? req.body.token.trim()
+                : "";
+
+        if (!token) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Le token FCM est obligatoire"
+            });
+
+        }
+
+
+        // ==============================
+        // RETIRER LE TOKEN
+        // ==============================
+
+        await User.updateOne(
+            { _id: userId },
+            {
+                $pull: { fcmTokens: token }
+            }
+        );
+
+
+        return res.status(200).json({
+            success: true,
+            message:
+                "Token FCM supprimé"
+        });
+
+
+    } catch (error) {
+
+        const jwtResponse =
+            handleJwtError(
+                error,
+                res
+            );
+
+        if (jwtResponse) {
+            return jwtResponse;
+        }
+
+        console.error(
+            "❌ REMOVE FCM TOKEN ERROR :",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                "Erreur lors de la suppression du token FCM"
         });
 
     }

@@ -14,6 +14,7 @@ const routeAuth = require('./routes/user');
 const routeRequete = require('./routes/requete');
 const routeAudio = require('./routes/audio');
 const routeDonation = require('./routes/donation');
+const routeNotification = require('./routes/notification');
 
 // ===============================
 // APPLICATION
@@ -74,6 +75,8 @@ app.use('/requete', routeRequete);
 app.use('/audio', routeAudio);
 
 app.use('/donation', routeDonation);
+
+app.use('/notification', routeNotification);
 
 // ===============================
 // 404
