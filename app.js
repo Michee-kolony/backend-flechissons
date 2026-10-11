@@ -16,6 +16,7 @@ const routeAudio = require('./routes/audio');
 const routeNotification = require('./routes/notification');
 const routePawapay = require('./routes/pawapay');
 const routeLive = require('./routes/live');
+const routeEglise = require('./routes/eglise');
 
 // ===============================
 // APPLICATION
@@ -80,6 +81,8 @@ app.use('/notification', routeNotification);
 app.use('/api/pawapay', routePawapay);
 
 app.use('/live', routeLive);
+
+app.use('/eglise', routeEglise);
 
 // ===============================
 // 404
