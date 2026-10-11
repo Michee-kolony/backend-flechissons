@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 const Paiement = require('../models/paiement');
-require('../models/user'); // pour populate('utilisateurId')
+const User = require('../models/user'); // aussi pour populate('utilisateurId')
 const {
     getLimitesOperateur,
     formaterMontant,
@@ -325,11 +325,25 @@ exports.creerDepot = async (req, res) => {
         // ENREGISTRER LE PAIEMENT
         // ==============================
 
+        // Fidèle connecté : le nom vient de son compte, pas de l'application
+        // (le profil gardé sur le téléphone peut être périmé)
+        const utilisateurId = getUtilisateurId(req);
+
+        const fidele = utilisateurId && mongoose.Types.ObjectId.isValid(utilisateurId)
+            ? await User.findById(utilisateurId).select('nom prenom').lean()
+            : null;
+
+        const nomFidele = fidele
+            ? [fidele.prenom, fidele.nom].filter(Boolean).join(' ').trim()
+            : '';
+
+        const nomEnvoye = typeof nom === 'string' ? nom.trim() : '';
+
         const paiement = await Paiement.create({
             depositId: crypto.randomUUID(),
             reference: genererReference(),
-            utilisateurId: getUtilisateurId(req),
-            nom: typeof nom === 'string' && nom.trim() ? nom.trim() : 'Anonyme',
+            utilisateurId,
+            nom: nomFidele || nomEnvoye || 'Anonyme',
             type: Paiement.TYPES.includes(type) ? type : 'don',
             objet: objet.trim(),
             description: typeof description === 'string' ? description.trim() : '',

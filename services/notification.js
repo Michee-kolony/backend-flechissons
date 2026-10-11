@@ -288,7 +288,8 @@ const synchroniserAbonnementUtilisateur = async (userId) => {
 const routes = {
   article: (articleId) => `/article/${articleId}`,
   commentaire: (articleId, commentaireId) => `/article/${articleId}?commentaire=${commentaireId}`,
-  audio: (audioId) => `/tabs/tab2?audio=${audioId}`
+  audio: (audioId) => `/tabs/tab2?audio=${audioId}`,
+  live: () => '/tabs/live'
 };
 
 module.exports = {
