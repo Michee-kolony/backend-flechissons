@@ -23,6 +23,7 @@
     "mongoose": "^9.9.2",
     "multer": "^2.2.0",
     "multer-s3": "^3.0.1",
+    "nodemailer": "^10.1.0",
     "nodemon": "^3.1.14"
   }
 }

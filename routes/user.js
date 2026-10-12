@@ -22,6 +22,7 @@ const {
     getUsers,
     updateProfile,
     forgotPassword,
+    verifyResetCode,
     resetPassword,
     changePassword,
     deleteAccount,
@@ -231,11 +232,21 @@ router.post(
 
 
 // ======================================================
-// RESET PASSWORD
+// VÉRIFIER LE CODE REÇU PAR E-MAIL
 // ======================================================
 
 router.post(
-    '/reset-password/:token',
+    '/verify-reset-code',
+    verifyResetCode
+);
+
+
+// ======================================================
+// RESET PASSWORD (email + code + nouveau mot de passe)
+// ======================================================
+
+router.post(
+    '/reset-password',
     resetPassword
 );
 

@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const r2 = require("../config/r2");
+const transporter = require("../config/mail");
 const { synchroniserAbonnementUtilisateur } = require("../services/notification");
 
 
@@ -1518,8 +1519,210 @@ exports.uploadPhoto = async (req, res) => {
 
 
 // =====================================================
+// MOT DE PASSE OUBLIÉ — CODE PAR E-MAIL
+//
+// 1. POST /user/forgot-password      { email }
+//    → envoie un code à 6 chiffres (valable 10 min)
+// 2. POST /user/verify-reset-code    { email, code }
+//    → vérifie le code (étape intermédiaire de l'app)
+// 3. POST /user/reset-password       { email, code, password }
+//    → enregistre le nouveau mot de passe
+// =====================================================
+
+const RESET_CODE_DUREE_MS = 10 * 60 * 1000;
+const RESET_CODE_DELAI_RENVOI_MS = 60 * 1000;
+const RESET_CODE_ESSAIS_MAX = 5;
+
+const RESET_FIELDS =
+    "+resetPasswordToken +resetPasswordExpires +resetPasswordAttempts +resetPasswordSentAt";
+
+
+const hashResetCode = (code) =>
+    crypto
+        .createHash("sha256")
+        .update(String(code))
+        .digest("hex");
+
+
+const effacerResetCode = (user) => {
+
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    user.resetPasswordAttempts = 0;
+    user.resetPasswordSentAt = null;
+
+};
+
+
+// =====================================================
+// E-MAIL DU CODE
+// =====================================================
+
+const envoyerEmailResetCode = (user, code) => {
+
+    const prenom =
+        user.prenom || user.nom || "";
+
+    return transporter.sendMail({
+
+        from: transporter.from,
+
+        to: user.email,
+
+        subject: "Votre code de réinitialisation — Fléchissons",
+
+        text:
+            `Bonjour ${prenom},\n\n` +
+            `Votre code de réinitialisation est : ${code}\n\n` +
+            `Ce code expire dans 10 minutes.\n` +
+            `Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.`,
+
+        html: `
+        <div style="margin:0;padding:32px 16px;background:#46515e;font-family:Arial,Helvetica,sans-serif">
+          <div style="max-width:440px;margin:0 auto;background:#343c47;border-radius:16px;padding:32px 28px;color:#ffffff">
+            <h2 style="margin:0 0 20px;font-size:22px;color:#ffffff">Fléchissons</h2>
+            <p style="margin:0 0 8px;color:#c3cbd4;font-size:15px">Bonjour ${prenom},</p>
+            <p style="margin:0 0 24px;color:#c3cbd4;font-size:15px">Voici votre code pour réinitialiser votre mot de passe :</p>
+            <div style="margin:0 0 24px;padding:18px 0;text-align:center;background:#46515e;border-radius:12px;font-size:38px;font-weight:700;letter-spacing:10px;color:#f8893d">${code}</div>
+            <p style="margin:0 0 8px;color:#c3cbd4;font-size:13px">Ce code expire dans 10 minutes.</p>
+            <p style="margin:0;color:#c3cbd4;font-size:13px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail : votre mot de passe reste inchangé.</p>
+          </div>
+        </div>
+        `
+
+    });
+
+};
+
+
+// =====================================================
+// CONTRÔLE DU CODE (partagé verify / reset)
+// Renvoie { user } ou { status, body } en cas d'erreur
+// =====================================================
+
+const controlerResetCode = async (email, code) => {
+
+    if (!email || !code) {
+
+        return {
+            status: 400,
+            body: {
+                success: false,
+                code: "FIELDS_REQUIRED",
+                message: "E-mail et code obligatoires"
+            }
+        };
+
+    }
+
+
+    const user =
+        await User.findOne({
+            email: String(email).trim().toLowerCase()
+        }).select(RESET_FIELDS);
+
+
+    if (
+        !user ||
+        !user.resetPasswordToken ||
+        !user.resetPasswordExpires
+    ) {
+
+        return {
+            status: 400,
+            body: {
+                success: false,
+                code: "CODE_INVALID",
+                message: "Code invalide. Demandez un nouveau code."
+            }
+        };
+
+    }
+
+
+    // ==============================
+    // EXPIRÉ
+    // ==============================
+
+    if (new Date(user.resetPasswordExpires).getTime() < Date.now()) {
+
+        effacerResetCode(user);
+        await user.save();
+
+        return {
+            status: 400,
+            body: {
+                success: false,
+                code: "CODE_EXPIRED",
+                message: "Ce code a expiré. Demandez un nouveau code."
+            }
+        };
+
+    }
+
+
+    // ==============================
+    // TROP D'ESSAIS
+    // ==============================
+
+    if (user.resetPasswordAttempts >= RESET_CODE_ESSAIS_MAX) {
+
+        effacerResetCode(user);
+        await user.save();
+
+        return {
+            status: 429,
+            body: {
+                success: false,
+                code: "TOO_MANY_ATTEMPTS",
+                message: "Trop d'essais. Demandez un nouveau code."
+            }
+        };
+
+    }
+
+
+    // ==============================
+    // COMPARAISON
+    // ==============================
+
+    const codeCorrect =
+        crypto.timingSafeEqual(
+            Buffer.from(hashResetCode(String(code).trim())),
+            Buffer.from(user.resetPasswordToken)
+        );
+
+
+    if (!codeCorrect) {
+
+        user.resetPasswordAttempts += 1;
+        await user.save();
+
+        const restants =
+            RESET_CODE_ESSAIS_MAX - user.resetPasswordAttempts;
+
+        return {
+            status: 400,
+            body: {
+                success: false,
+                code: "CODE_INCORRECT",
+                message: restants > 0
+                    ? `Code incorrect. ${restants} essai${restants > 1 ? "s" : ""} restant${restants > 1 ? "s" : ""}.`
+                    : "Code incorrect. Demandez un nouveau code.",
+                attemptsLeft: restants
+            }
+        };
+
+    }
+
+
+    return { user };
+
+};
+
+
+// =====================================================
 // FORGOT PASSWORD
-// Aucun mail pour l'instant
 // =====================================================
 
 exports.forgotPassword = async (req, res) => {
@@ -1541,6 +1744,8 @@ exports.forgotPassword = async (req, res) => {
 
                 success: false,
 
+                code: "EMAIL_REQUIRED",
+
                 message:
                     "Email obligatoire"
 
@@ -1550,7 +1755,7 @@ exports.forgotPassword = async (req, res) => {
 
 
         const emailNormalise =
-            email.trim().toLowerCase();
+            String(email).trim().toLowerCase();
 
 
         // ==============================
@@ -1560,9 +1765,7 @@ exports.forgotPassword = async (req, res) => {
         const user =
             await User.findOne({
                 email: emailNormalise
-            }).select(
-                "+resetPasswordToken +resetPasswordExpires"
-            );
+            }).select(RESET_FIELDS);
 
 
         if (!user) {
@@ -1570,6 +1773,8 @@ exports.forgotPassword = async (req, res) => {
             return res.status(404).json({
 
                 success: false,
+
+                code: "USER_NOT_FOUND",
 
                 message:
                     "Aucun compte associé à cet email"
@@ -1580,57 +1785,106 @@ exports.forgotPassword = async (req, res) => {
 
 
         // ==============================
-        // TOKEN RESET
+        // ANTI-SPAM : 1 ENVOI / MINUTE
         // ==============================
 
-        const resetToken =
+        const depuisDernierEnvoi =
+            user.resetPasswordSentAt
+                ? Date.now() - new Date(user.resetPasswordSentAt).getTime()
+                : Infinity;
+
+
+        if (depuisDernierEnvoi < RESET_CODE_DELAI_RENVOI_MS) {
+
+            const attente =
+                Math.ceil(
+                    (RESET_CODE_DELAI_RENVOI_MS - depuisDernierEnvoi) / 1000
+                );
+
+            return res.status(429).json({
+
+                success: false,
+
+                code: "TOO_SOON",
+
+                message:
+                    `Veuillez patienter ${attente} s avant de demander un nouveau code.`,
+
+                retryAfter: attente
+
+            });
+
+        }
+
+
+        // ==============================
+        // CODE 6 CHIFFRES
+        // ==============================
+
+        const code =
             crypto
-                .randomBytes(32)
-                .toString("hex");
-
-
-        // ==============================
-        // HASH TOKEN
-        // ==============================
-
-        const hashedToken =
-            crypto
-                .createHash("sha256")
-                .update(resetToken)
-                .digest("hex");
+                .randomInt(0, 1000000)
+                .toString()
+                .padStart(6, "0");
 
 
         user.resetPasswordToken =
-            hashedToken;
-
-
-        // ==============================
-        // EXPIRATION
-        // 15 MINUTES
-        // ==============================
+            hashResetCode(code);
 
         user.resetPasswordExpires =
-            Date.now() +
-            15 * 60 * 1000;
+            Date.now() + RESET_CODE_DUREE_MS;
+
+        user.resetPasswordAttempts = 0;
+
+        user.resetPasswordSentAt =
+            new Date();
 
 
         await user.save();
 
 
         // ==============================
-        // TEMPORAIRE POUR TEST
-        // À SUPPRIMER APRÈS INTÉGRATION
-        // EMAIL
+        // ENVOI E-MAIL
         // ==============================
+
+        try {
+
+            await envoyerEmailResetCode(user, code);
+
+        } catch (mailError) {
+
+            console.error(
+                "❌ FORGOT PASSWORD MAIL ERROR :",
+                mailError
+            );
+
+            effacerResetCode(user);
+            await user.save();
+
+            return res.status(502).json({
+
+                success: false,
+
+                code: "MAIL_ERROR",
+
+                message:
+                    "Impossible d'envoyer l'e-mail. Veuillez réessayer."
+
+            });
+
+        }
+
 
         return res.status(200).json({
 
             success: true,
 
             message:
-                "Token de réinitialisation généré",
+                "Un code de réinitialisation a été envoyé par e-mail",
 
-            resetToken
+            expiresIn: RESET_CODE_DUREE_MS / 1000,
+
+            retryAfter: RESET_CODE_DELAI_RENVOI_MS / 1000
 
         });
 
@@ -1658,6 +1912,65 @@ exports.forgotPassword = async (req, res) => {
 
 
 // =====================================================
+// VERIFY RESET CODE
+// =====================================================
+
+exports.verifyResetCode = async (req, res) => {
+
+    try {
+
+        const {
+            email,
+            code
+        } = req.body;
+
+
+        const resultat =
+            await controlerResetCode(email, code);
+
+
+        if (!resultat.user) {
+
+            return res
+                .status(resultat.status)
+                .json(resultat.body);
+
+        }
+
+
+        return res.status(200).json({
+
+            success: true,
+
+            message:
+                "Code valide"
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "❌ VERIFY RESET CODE ERROR :",
+            error
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                "Erreur lors de la vérification du code"
+
+        });
+
+    }
+
+};
+
+
+// =====================================================
 // RESET PASSWORD
 // =====================================================
 
@@ -1666,31 +1979,10 @@ exports.resetPassword = async (req, res) => {
     try {
 
         const {
-            token
-        } = req.params;
-
-
-        const {
+            email,
+            code,
             password
         } = req.body;
-
-
-        // ==============================
-        // VALIDATION TOKEN
-        // ==============================
-
-        if (!token) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "Token manquant"
-
-            });
-
-        }
 
 
         // ==============================
@@ -1702,6 +1994,8 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({
 
                 success: false,
+
+                code: "PASSWORD_REQUIRED",
 
                 message:
                     "Nouveau mot de passe obligatoire"
@@ -1717,6 +2011,8 @@ exports.resetPassword = async (req, res) => {
 
                 success: false,
 
+                code: "PASSWORD_TOO_SHORT",
+
                 message:
                     "Le mot de passe doit contenir au moins 6 caractères"
 
@@ -1726,47 +2022,23 @@ exports.resetPassword = async (req, res) => {
 
 
         // ==============================
-        // HASH TOKEN
+        // VÉRIFIER LE CODE
         // ==============================
 
-        const hashedToken =
-            crypto
-                .createHash("sha256")
-                .update(token)
-                .digest("hex");
+        const resultat =
+            await controlerResetCode(email, code);
 
 
-        // ==============================
-        // RECHERCHE TOKEN
-        // ==============================
+        if (!resultat.user) {
 
-        const user =
-            await User.findOne({
-
-                resetPasswordToken:
-                    hashedToken,
-
-                resetPasswordExpires: {
-                    $gt: Date.now()
-                }
-
-            }).select(
-                "+resetPasswordToken +resetPasswordExpires"
-            );
-
-
-        if (!user) {
-
-            return res.status(400).json({
-
-                success: false,
-
-                message:
-                    "Token invalide ou expiré"
-
-            });
+            return res
+                .status(resultat.status)
+                .json(resultat.body);
 
         }
+
+
+        const user = resultat.user;
 
 
         // ==============================
@@ -1781,14 +2053,10 @@ exports.resetPassword = async (req, res) => {
 
 
         // ==============================
-        // SUPPRIMER TOKEN RESET
+        // SUPPRIMER CODE RESET
         // ==============================
 
-        user.resetPasswordToken =
-            null;
-
-        user.resetPasswordExpires =
-            null;
+        effacerResetCode(user);
 
 
         await user.save();

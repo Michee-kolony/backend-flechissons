@@ -51,6 +51,20 @@ const userSchema = new mongoose.Schema(
       select: false
     },
 
+    // Nombre d'essais de code ratés (bloque après 5)
+    resetPasswordAttempts: {
+      type: Number,
+      default: 0,
+      select: false
+    },
+
+    // Date du dernier envoi de code (anti-spam)
+    resetPasswordSentAt: {
+      type: Date,
+      default: null,
+      select: false
+    },
+
 
     // =================================================
     // INFORMATIONS DE BASE
