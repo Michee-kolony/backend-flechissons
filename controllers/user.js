@@ -6,7 +6,9 @@ const User = require("../models/user");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const r2 = require("../config/r2");
 const transporter = require("../config/mail");
-const { synchroniserAbonnementUtilisateur } = require("../services/notification");
+const { synchroniserAbonnementUtilisateur, desabonnerAppareils } = require("../services/notification");
+const Article = require("../models/article");
+const Paiement = require("../models/paiement");
 
 
 // =====================================================
@@ -2264,6 +2266,19 @@ exports.changePassword = async (req, res) => {
 // =====================================================
 // DELETE ACCOUNT
 // =====================================================
+// DELETE /user/account
+// Body : { confirmation: "SUPPRIMER MON COMPTE" }
+//
+// Supprime définitivement :
+// - le compte
+// - la photo de profil (R2)
+// - les commentaires et likes de l'utilisateur
+// - l'abonnement aux notifications de ses appareils
+// Les paiements sont conservés (comptabilité) mais
+// détachés du compte.
+// =====================================================
+
+const PHRASE_SUPPRESSION_COMPTE = "SUPPRIMER MON COMPTE";
 
 exports.deleteAccount = async (req, res) => {
 
@@ -2282,11 +2297,38 @@ exports.deleteAccount = async (req, res) => {
 
 
         // ==============================
+        // CONFIRMATION
+        // ==============================
+
+        const confirmation =
+            String(req.body?.confirmation || "")
+                .trim()
+                .toUpperCase();
+
+
+        if (confirmation !== PHRASE_SUPPRESSION_COMPTE) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                code: "CONFIRMATION_REQUIRED",
+
+                message:
+                    `Pour confirmer, saisissez « ${PHRASE_SUPPRESSION_COMPTE} »`
+
+            });
+
+        }
+
+
+        // ==============================
         // USER
         // ==============================
 
         const user =
-            await User.findById(userId);
+            await User.findById(userId)
+                .select("+fcmTokens");
 
 
         if (!user) {
@@ -2304,11 +2346,67 @@ exports.deleteAccount = async (req, res) => {
 
 
         // ==============================
-        // SUPPRESSION
+        // NOTIFICATIONS : DÉSABONNER SES APPAREILS
+        // ==============================
+
+        await desabonnerAppareils(
+            user.fcmTokens || []
+        );
+
+
+        // ==============================
+        // COMMENTAIRES + LIKES
+        // ==============================
+
+        await Article.updateMany(
+
+            {
+                $or: [
+                    { likes: user._id },
+                    { "commentaires.utilisateurId": user._id }
+                ]
+            },
+
+            {
+                $pull: {
+                    likes: user._id,
+                    commentaires: {
+                        utilisateurId: user._id
+                    }
+                }
+            }
+
+        );
+
+
+        // ==============================
+        // PAIEMENTS : CONSERVÉS, DÉTACHÉS DU COMPTE
+        // ==============================
+
+        await Paiement.updateMany(
+
+            { utilisateurId: user._id },
+
+            { $set: { utilisateurId: null } }
+
+        );
+
+
+        // ==============================
+        // SUPPRESSION DU COMPTE
         // ==============================
 
         await User.findByIdAndDelete(
             userId
+        );
+
+
+        // ==============================
+        // PHOTO DE PROFIL (après coup : un échec n'empêche pas la suppression)
+        // ==============================
+
+        await supprimerPhotoR2(
+            user.photo
         );
 
 

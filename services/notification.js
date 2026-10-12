@@ -281,6 +281,24 @@ const synchroniserAbonnementUtilisateur = async (userId) => {
 
 };
 
+// Désabonne des appareils du topic "tous" (ex : suppression de compte)
+const desabonnerAppareils = async (tokens) => {
+
+  const fcm = getMessagingFirebase();
+  if (!fcm || !tokens?.length) {
+    return;
+  }
+
+  try {
+    for (const lot of decouper(tokens, TAILLE_LOT)) {
+      await fcm.unsubscribeFromTopic(lot, TOPIC_TOUS);
+    }
+  } catch (error) {
+    console.error('❌ Erreur désabonnement appareils :', error.message);
+  }
+
+};
+
 // =====================================================
 // ROUTES DE L'APPLICATION (deep links)
 // =====================================================
@@ -297,6 +315,7 @@ module.exports = {
   envoyerAUtilisateurs,
   abonnerAppareil,
   synchroniserAbonnementUtilisateur,
+  desabonnerAppareils,
   imageArticle,
   routes
 };
