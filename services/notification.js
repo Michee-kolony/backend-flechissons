@@ -11,7 +11,9 @@
 // Aucune fonction de ce fichier ne lève d'erreur : une notification
 // qui échoue ne doit jamais faire échouer la requête de l'API.
 
+const mongoose = require('mongoose');
 const User = require('../models/user');
+const Notification = require('../models/notification');
 
 const TOPIC_TOUS = 'tous';
 
@@ -128,6 +130,45 @@ const imageArticle = (article) => {
 };
 
 // =====================================================
+// HISTORIQUE (page "Notifications" de l'application)
+// =====================================================
+// destinataires : null pour une notification envoyée à tous,
+// sinon la liste des comptes concernés (un document chacun)
+// =====================================================
+
+const enregistrerHistorique = async (destinataires, { titre, message, route, data, image }) => {
+
+  try {
+
+    const type = Notification.TYPES.includes(data?.type) ? data.type : 'autre';
+
+    const base = {
+      type,
+      titre: tronquer(titre, 200),
+      message: tronquer(message, 300),
+      route: route || null,
+      image: imageValide(image) || null
+    };
+
+    if (destinataires === null) {
+      await Notification.create({ ...base, destinataire: null });
+      return;
+    }
+
+    const ids = [...new Set(destinataires.map(String))]
+      .filter(id => mongoose.Types.ObjectId.isValid(id));
+
+    if (ids.length) {
+      await Notification.insertMany(ids.map(id => ({ ...base, destinataire: id })));
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur historique notification :', error.message);
+  }
+
+};
+
+// =====================================================
 // NETTOYAGE DES TOKENS MORTS
 // =====================================================
 
@@ -154,6 +195,8 @@ const supprimerTokensMorts = async (tokens) => {
 // =====================================================
 
 const envoyerATous = async ({ titre, message, route, data, image }) => {
+
+  await enregistrerHistorique(null, { titre, message, route, data, image });
 
   const fcm = getMessagingFirebase();
   if (!fcm) {
@@ -182,8 +225,14 @@ const envoyerATous = async ({ titre, message, route, data, image }) => {
 
 const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image }) => {
 
+  if (!userIds || !userIds.length) {
+    return;
+  }
+
+  await enregistrerHistorique(userIds, { titre, message, route, data, image });
+
   const fcm = getMessagingFirebase();
-  if (!fcm || !userIds || !userIds.length) {
+  if (!fcm) {
     return;
   }
 

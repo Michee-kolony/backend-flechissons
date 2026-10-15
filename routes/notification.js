@@ -2,7 +2,17 @@ const express = require('express');
 
 const router = express.Router();
 
-const { abonner } = require('../controllers/notification');
+const { abonner, lister } = require('../controllers/notification');
+
+
+// ======================================================
+// LISTE (CONNECTÉ OU NON)
+// ======================================================
+
+router.get(
+    '/',
+    lister
+);
 
 
 // ======================================================
