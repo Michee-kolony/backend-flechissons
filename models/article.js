@@ -123,6 +123,8 @@ const articleSchema = new mongoose.Schema(
 articleSchema.index({ type: 1 });
 articleSchema.index({ theme: 1 });
 articleSchema.index({ createdAt: -1 });
+// Fil d'actualité paginé par type (voir getArticles)
+articleSchema.index({ type: 1, createdAt: -1, _id: -1 });
 
 // =====================================================
 // MODEL

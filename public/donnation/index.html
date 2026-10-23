@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Faire un don · Fléchissons</title>
+  <meta name="description" content="Soutenez la mission de Fléchissons par Mobile Money (M-Pesa, Orange Money, Airtel Money).">
+  <meta name="theme-color" content="#f97316">
+  <style>
+    :root {
+      --orange: #f97316;
+      --orange-dark: #ea580c;
+      --bg: #f9fafb;
+      --surface: #ffffff;
+      --surface-soft: #fffaf6;
+      --tint: #fff4eb;
+      --border: #f1f2f4;
+      --border-orange: #ffedd5;
+      --text: #1f2937;
+      --text-2: #6b7280;
+      --text-3: #9ca3af;
+      --field: #f9fafb;
+      --danger: #dc2626;
+      --success: #16a34a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1220;
+        --surface: #111a2e;
+        --surface-soft: #111a2e;
+        --tint: rgba(249, 115, 22, .15);
+        --border: #1f2a44;
+        --border-orange: #1f2a44;
+        --text: #f3f4f6;
+        --text-2: #a5b0c4;
+        --text-3: #7c879c;
+        --field: #0b1220;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    svg.ic { width: 1em; height: 1em; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .container { width: 100%; max-width: 560px; margin: 0 auto; padding: 0 16px; }
+
+    /* En-tête */
+    header { position: sticky; top: 0; z-index: 10; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+    .toolbar__title { flex: 1; min-width: 0; }
+    .toolbar__title p { margin: 0; color: var(--orange); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+    .toolbar__title h1 { margin: 2px 0 0; font-size: 17px; font-weight: 700; }
+    .toolbar__icon, .heading-icon { display: grid; place-items: center; width: 36px; height: 36px; color: var(--orange); background: var(--tint); border-radius: 12px; font-size: 19px; }
+
+    main { padding-top: 20px; padding-bottom: 40px; }
+
+    /* Bandeau */
+    .hero { position: relative; overflow: hidden; padding: 25px 22px; color: #fff; background: linear-gradient(135deg, var(--orange), var(--orange-dark)); border-radius: 24px; box-shadow: 0 14px 28px rgba(234, 88, 12, .22); }
+    .hero__shape { position: absolute; border: 1px solid rgba(255,255,255,.16); border-radius: 50%; }
+    .hero__shape--one { width: 170px; height: 170px; top: -90px; right: -60px; }
+    .hero__shape--two { width: 90px; height: 90px; bottom: -43px; left: 45%; background: rgba(255,255,255,.08); }
+    .hero__icon { position: relative; display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 16px; background: rgba(255,255,255,.17); border: 1px solid rgba(255,255,255,.24); border-radius: 15px; font-size: 24px; }
+    .hero p, .hero h2, .hero span { position: relative; }
+    .hero p { margin: 0; font-size: 10px; font-weight: 800; letter-spacing: .13em; color: #ffedd5; }
+    .hero h2 { margin: 7px 0 8px; font-size: 25px; line-height: 1.12; font-weight: 800; }
+    .hero span { display: block; max-width: 340px; color: #fff7ed; font-size: 13px; line-height: 1.55; }
+
+    /* Sections */
+    .section { margin-top: 29px; }
+    .section__heading { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+    .heading-icon { width: 35px; height: 35px; border-radius: 11px; font-size: 18px; }
+    .section__heading h3 { margin: 0; font-size: 15px; font-weight: 750; }
+    .section__heading p { margin: 2px 0 0; color: var(--text-3); font-size: 11px; }
+
+    .grid { display: grid; gap: 10px; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .option { min-height: 52px; padding: 10px 8px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; font-weight: 700; transition: border-color .2s, background .2s, color .2s; }
+    .option:hover { border-color: #fdba74; }
+    .option.is-selected { color: var(--orange); background: var(--tint); border-color: var(--orange); }
+
+    .operator { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 6px; }
+    .operator img { height: 38px; width: auto; max-width: 100%; object-fit: contain; }
+    .operator span { font-size: 12px; font-weight: 650; color: var(--text-2); }
+    .operator.is-selected span { color: var(--orange); }
+
+    label { display: block; margin-top: 14px; font-size: 13px; font-weight: 650; color: var(--text-2); }
+    label .req { color: var(--orange); }
+    label .opt { font-weight: 400; color: var(--text-3); }
+    .field { display: flex; align-items: center; gap: 8px; margin-top: 7px; padding: 0 14px; min-height: 52px; background: var(--field); border: 1.5px solid var(--border); border-radius: 14px; transition: border-color .2s, box-shadow .2s; }
+    .field:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(249, 115, 22, .15); }
+    .field input, .field textarea { flex: 1; min-width: 0; padding: 12px 0; border: 0; outline: 0; background: transparent; font-size: 16px; }
+    .field textarea { resize: none; }
+    .field .suffix, .field .prefix { font-weight: 700; color: var(--text-2); }
+    .field .suffix { color: var(--orange); }
+    .hint { margin: 5px 0 0; color: var(--text-3); font-size: 11px; }
+    .hint--right { text-align: right; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .chip { padding: 6px 12px; background: transparent; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .chip.is-selected { color: #fff; background: var(--orange); border-color: var(--orange); }
+
+    .summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 26px; padding: 16px; background: var(--tint); border-radius: 17px; }
+    .summary small { display: block; color: var(--text-2); font-size: 12px; }
+    .summary strong { display: block; margin-top: 3px; font-size: 22px; color: var(--orange); }
+    .summary .right { text-align: right; }
+    .summary .right strong { font-size: 14px; color: var(--text); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; color: #fff; background: var(--orange); border: 0; border-radius: 14px; font-weight: 700; font-size: 15px; box-shadow: 0 8px 18px rgba(249, 115, 22, .25); transition: background .2s; }
+    .btn:hover { background: var(--orange-dark); }
+    .btn:disabled { opacity: .6; cursor: default; }
+    .btn--ghost { background: transparent; color: var(--text-2); box-shadow: none; }
+    .btn--ghost:hover { background: transparent; color: var(--text); }
+    .submit { margin-top: 18px; }
+    .secure { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 0; color: var(--text-3); font-size: 11px; }
+
+    .error { display: none; margin-top: 14px; padding: 12px 14px; color: var(--danger); background: rgba(220, 38, 38, .08); border-radius: 12px; font-size: 13px; }
+    .error.is-visible { display: block; }
+
+    /* Confidentialité */
+    .safeguards { display: grid; gap: 9px; }
+    .safeguards div { display: flex; align-items: center; gap: 10px; padding: 12px 13px; color: var(--text-2); background: var(--surface-soft); border: 1px solid var(--border-orange); border-radius: 14px; font-size: 12px; font-weight: 500; }
+    .safeguards svg { color: var(--orange); font-size: 18px; }
+    .note { display: flex; gap: 10px; margin-top: 22px; padding: 14px; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; font-size: 12px; line-height: 1.5; }
+    .note svg { color: #f59e0b; font-size: 19px; }
+    .note p { margin: 0; }
+    .footer { margin: 22px 0 0; color: var(--text-3); font-size: 10px; text-align: center; }
+
+    /* Fenêtre de suivi */
+    .overlay { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .6); }
+    .overlay.is-visible { display: flex; }
+    .dialog { width: 100%; max-width: 380px; padding: 24px; text-align: center; background: var(--surface); border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,.25); }
+    .dialog h2 { margin: 14px 0 0; font-size: 18px; }
+    .dialog p { margin: 8px 0 0; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+    .dialog .ref { font-size: 11px; color: var(--text-3); }
+    .dialog .btn { margin-top: 18px; }
+    .dialog .btn--ghost { margin-top: 6px; }
+    .badge { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; font-size: 32px; }
+    .badge--success { color: var(--success); background: rgba(22, 163, 74, .12); }
+    .badge--error { color: var(--danger); background: rgba(220, 38, 38, .12); }
+    .badge--wait { color: var(--orange); background: var(--tint); }
+    .spinner { width: 48px; height: 48px; margin: 0 auto; border: 4px solid var(--tint); border-top-color: var(--orange); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Icônes (tracés simples, sans dépendance externe) -->
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.9 17.9A10 10 0 0 1 12 20c-7 0-10-8-10-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 10 8 10 8a18 18 0 0 1-2.2 3.2M1 1l22 22"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><path d="M8 9h8M8 13h6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-time" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  </svg>
+
+  <header>
+    <div class="container toolbar">
+      <div class="toolbar__title"><p>DON SÉCURISÉ</p><h1>Soutenir Fléchissons</h1></div>
+      <div class="toolbar__icon"><svg class="ic"><use href="#i-shield"/></svg></div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="hero">
+      <div class="hero__shape hero__shape--one"></div><div class="hero__shape hero__shape--two"></div>
+      <div class="hero__icon"><svg class="ic"><use href="#i-heart"/></svg></div>
+      <p>FAIRE UN DON</p>
+      <h2>Chaque don fait la différence.</h2>
+      <span>Merci de soutenir la mission de Fléchissons. Votre contribution est réglée par Mobile Money, en toute sécurité.</span>
+    </section>
+
+    <form id="formDon" novalidate>
+
+      <!-- Devise -->
+      <section class="section">
+        <div class="section__heading"><span class="heading-icon"><svg class="ic"><use href="#i-cash"/></svg></span><div><h3>Devise</h3><p>Dollar américain ou franc congolais.</p></div></div>
+        <div class="grid grid-2" id="devises">
+          <button type="button" class="option is-selected" data-devise="USD">Dollar · USD</button>
+          <button type="button" class="option" data-devise="CDF">Franc · CDF</button>
+        </div>
+      </section>
+
+      <!-- Montant -->
+      <section class="section">
+        <div class="section__heading"><span class="heading-icon"><svg class="ic"><use href="#i-heart"/></svg></span><div><h3>Choisir un montant</h3><p>Ou saisissez le montant de votre choix.</p></div></div>
+        <div class="grid grid-3" id="montants"></div>
+        <label for="montant">Autre montant</label>
+        <div class="field">
+          <input id="montant" type="number" inputmode="decimal" min="0" step="any">
+          <span class="suffix" id="montantDevise">USD</span>
+        </div>
+      </section>
+
+      <!-- Motif -->
+      <section class="section">
+        <div class="section__heading"><span class="heading-icon"><svg class="ic"><use href="#i-gift"/></svg></span><div><h3>Motif du don</h3><p>Dîme, offrande, mission…</p></div></div>
+        <label for="objet">Objet <span class="req">*</span></label>
+        <div class="field"><input id="objet" type="text" maxlength="100" placeholder="Ex : Dîme, offrande, soutien à la mission…"></div>
+        <div class="chips" id="motifs"></div>
+
+        <label for="description">Description <span class="opt">(facultatif)</span></label>
+        <div class="field"><textarea id="description" rows="3" maxlength="500" placeholder="Ajoutez un message ou des précisions sur votre don"></textarea></div>
+        <p class="hint hint--right"><span id="descriptionCompteur">0</span>/500</p>
+
+        <label for="nom">Votre nom <span class="opt">(facultatif)</span></label>
+        <div class="field"><input id="nom" type="text" maxlength="100" autocomplete="name" placeholder="Ex : Jean Mukendi"></div>
+      </section>
+
+      <!-- Moyen de paiement -->
+      <section class="section">
+        <div class="section__heading"><span class="heading-icon"><svg class="ic"><use href="#i-phone"/></svg></span><div><h3>Moyen de paiement</h3><p>Mobile Money en République démocratique du Congo.</p></div></div>
+        <div class="grid grid-3" id="operateurs">
+          <button type="button" class="option operator is-selected" data-operateur="mpesa"><img src="assets/mpesa.png" alt=""><span>M-Pesa</span></button>
+          <button type="button" class="option operator" data-operateur="orange"><img src="assets/orangemoney.png" alt=""><span>Orange Money</span></button>
+          <button type="button" class="option operator" data-operateur="airtel"><img src="assets/airtelmoney.png" alt=""><span>Airtel Money</span></button>
+        </div>
+        <label for="telephone">Numéro <span id="telephoneOperateur">M-Pesa</span> <span class="req">*</span></label>
+        <div class="field">
+          <span class="prefix">+243</span>
+          <input id="telephone" type="tel" inputmode="numeric" maxlength="9" autocomplete="tel-national" placeholder="Ex : 812345678">
+        </div>
+        <p class="hint">Entrez votre numéro sans l'indicatif +243 (9 chiffres).</p>
+      </section>
+
+      <!-- Résumé -->
+      <div class="summary">
+        <div><small>Montant du don</small><strong id="resumeMontant">$10.00</strong></div>
+        <div class="right"><small>Moyen de paiement</small><strong id="resumeOperateur">M-Pesa</strong></div>
+      </div>
+
+      <p class="error" id="erreur" role="alert"></p>
+
+      <button type="submit" class="btn submit" id="valider">
+        <svg class="ic"><use href="#i-lock"/></svg><span id="validerTexte">Confirmer le don · $10.00</span>
+      </button>
+      <p class="secure"><svg class="ic"><use href="#i-shield"/></svg> Vous recevrez une demande de code PIN sur votre téléphone.</p>
+    </form>
+
+    <!-- Confidentialité des dons -->
+    <section class="section">
+      <div class="section__heading"><span class="heading-icon"><svg class="ic"><use href="#i-lock"/></svg></span><div><h3>Confidentialité de votre don</h3><p>Comment nous traitons vos informations de paiement.</p></div></div>
+      <div class="safeguards">
+        <div><svg class="ic"><use href="#i-phone"/></svg><span>Votre code PIN est saisi uniquement sur votre téléphone : Fléchissons n'y a jamais accès.</span></div>
+        <div><svg class="ic"><use href="#i-shield"/></svg><span>Le paiement est traité par notre prestataire agréé PawaPay et votre opérateur Mobile Money.</span></div>
+        <div><svg class="ic"><use href="#i-receipt"/></svg><span>Nous conservons le montant, le motif, le numéro et la référence pour le suivi de votre contribution.</span></div>
+        <div><svg class="ic"><use href="#i-eye-off"/></svg><span>Aucune vente ni partage de vos informations à des fins commerciales.</span></div>
+      </div>
+      <div class="note"><svg class="ic"><use href="#i-info"/></svg><p>Une question sur un don ou vos données ? Contactez l'équipe Fléchissons depuis la page Contact de l'application en indiquant la référence de votre paiement.</p></div>
+    </section>
+
+    <p class="footer">© Fléchissons — Dons et confidentialité</p>
+  </main>
+
+  <!-- Suivi du paiement -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="dialog">
+      <div id="etapeAttente" hidden>
+        <div class="spinner"></div>
+        <h2>Validez sur votre téléphone</h2>
+        <p>Une demande de paiement de <strong data-montant></strong> a été envoyée au <strong data-telephone></strong>. Entrez votre code PIN <span data-operateur></span> pour confirmer.</p>
+        <p class="ref">Référence : <span data-reference></span></p>
+        <button type="button" class="btn btn--ghost" data-action="fermer">Fermer</button>
+      </div>
+
+      <div id="etapeReussi" hidden>
+        <div class="badge badge--success"><svg class="ic"><use href="#i-check"/></svg></div>
+        <h2>Merci pour votre générosité 🙏</h2>
+        <p>Votre contribution « <span data-objet></span> » de <strong data-montant></strong> a bien été reçue.</p>
+        <p class="ref">Référence : <span data-reference></span></p>
+        <button type="button" class="btn" data-action="terminer">Terminer</button>
+      </div>
+
+      <div id="etapeEchoue" hidden>
+        <div class="badge badge--error"><svg class="ic"><use href="#i-close"/></svg></div>
+        <h2>Paiement non abouti</h2>
+        <p id="messageEchec"></p>
+        <p class="ref">Aucun montant n'a été débité.</p>
+        <button type="button" class="btn" data-action="fermer">Réessayer</button>
+      </div>
+
+      <div id="etapeDelai" hidden>
+        <div class="badge badge--wait"><svg class="ic"><use href="#i-time"/></svg></div>
+        <h2>Paiement toujours en attente</h2>
+        <p>Nous n'avons pas encore reçu la confirmation de <span data-operateur></span>. Si vous avez saisi votre code PIN, le paiement sera confirmé dans quelques instants.</p>
+        <p class="ref">Référence : <span data-reference></span></p>
+        <button type="button" class="btn" data-action="verifier">Vérifier à nouveau</button>
+        <button type="button" class="btn btn--ghost" data-action="fermer">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // Même origine que l'API (https://flechissons.com/api/pawapay)
+      var API = '/api/pawapay';
+
+      var MONTANTS = {
+        USD: [5, 10, 25, 50, 100, 200],
+        CDF: [5000, 10000, 25000, 50000, 100000, 200000]
+      };
+
+      var MOTIFS = [
+        { label: 'Dîme', type: 'dime' },
+        { label: 'Offrande', type: 'offrande' },
+        { label: 'Action de grâces', type: 'action_de_graces' },
+        { label: 'Mission', type: 'mission' },
+        { label: 'Don', type: 'don' }
+      ];
+
+      var OPERATEURS = { mpesa: 'M-Pesa', orange: 'Orange Money', airtel: 'Airtel Money' };
+
+      // Vérification du statut pendant que le fidèle valide sur son téléphone
+      var INTERVALLE_VERIFICATION_MS = 4000;
+      var DUREE_MAX_ATTENTE_MS = 3 * 60 * 1000;
+
+      var etat = {
+        devise: 'USD',
+        montant: 10,
+        operateur: 'mpesa',
+        type: 'don',
+        paiement: null,
+        envoi: false,
+        timer: null,
+        debutAttente: 0
+      };
+
+      var $ = function (id) { return document.getElementById(id); };
+      var champMontant = $('montant');
+      var champObjet = $('objet');
+      var champDescription = $('description');
+      var champTelephone = $('telephone');
+      var overlay = $('overlay');
+
+      /** "$10.00" en USD, "10 000 FC" en CDF */
+      function formaterMontant(montant, decimales) {
+        var valeur = Number(montant) || 0;
+        if (etat.devise === 'CDF') {
+          return Math.round(valeur).toLocaleString('fr-FR') + ' FC';
+        }
+        var d = decimales === false ? 0 : 2;
+        return '$' + valeur.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+      }
+
+      function selectionner(conteneur, attribut, valeur) {
+        conteneur.querySelectorAll('[' + attribut + ']').forEach(function (el) {
+          el.classList.toggle('is-selected', el.getAttribute(attribut) === String(valeur));
+        });
+      }
+
+      function afficherMontants() {
+        var conteneur = $('montants');
+        conteneur.innerHTML = '';
+        MONTANTS[etat.devise].forEach(function (m) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'option';
+          b.setAttribute('data-montant', m);
+          b.textContent = formaterMontant(m, false);
+          b.addEventListener('click', function () { choisirMontant(m); });
+          conteneur.appendChild(b);
+        });
+        selectionner(conteneur, 'data-montant', etat.montant);
+        champMontant.placeholder = etat.devise === 'CDF' ? 'Ex : 25000' : 'Ex : 25';
+        $('montantDevise').textContent = etat.devise;
+      }
+
+      function choisirMontant(m) {
+        etat.montant = m;
+        champMontant.value = m;
+        selectionner($('montants'), 'data-montant', m);
+        majResume();
+      }
+
+      function majResume() {
+        var texte = formaterMontant(etat.montant);
+        $('resumeMontant').textContent = texte;
+        $('resumeOperateur').textContent = OPERATEURS[etat.operateur];
+        $('telephoneOperateur').textContent = OPERATEURS[etat.operateur];
+        $('validerTexte').textContent = etat.envoi ? 'Envoi en cours…' : 'Confirmer le don · ' + texte;
+      }
+
+      function afficherErreur(message) {
+        var el = $('erreur');
+        el.textContent = message || '';
+        el.classList.toggle('is-visible', !!message);
+        if (message) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }
+
+      // ----- Devise -----
+      $('devises').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-devise]');
+        if (!b || b.dataset.devise === etat.devise) { return; }
+        // On garde la même position dans la liste (ex. 2e montant en USD -> 2e montant en CDF)
+        var index = MONTANTS[etat.devise].indexOf(etat.montant);
+        etat.devise = b.dataset.devise;
+        selectionner($('devises'), 'data-devise', etat.devise);
+        etat.montant = MONTANTS[etat.devise][index >= 0 ? index : 1];
+        afficherMontants();
+        choisirMontant(etat.montant);
+      });
+
+      // ----- Montant libre -----
+      champMontant.addEventListener('input', function () {
+        var m = parseFloat(champMontant.value);
+        etat.montant = !isNaN(m) && m > 0 ? m : 0;
+        selectionner($('montants'), 'data-montant', etat.montant);
+        majResume();
+      });
+
+      // ----- Motifs -----
+      MOTIFS.forEach(function (motif) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip';
+        b.setAttribute('data-motif', motif.label);
+        b.textContent = motif.label;
+        b.addEventListener('click', function () {
+          champObjet.value = motif.label;
+          majMotif();
+        });
+        $('motifs').appendChild(b);
+      });
+
+      /** Texte libre : le type suit le raccourci s'il correspond, sinon "autre" */
+      function majMotif() {
+        var valeur = champObjet.value.trim().toLowerCase();
+        var motif = MOTIFS.filter(function (m) { return m.label.toLowerCase() === valeur; })[0];
+        etat.type = motif ? motif.type : (valeur ? 'autre' : 'don');
+        selectionner($('motifs'), 'data-motif', motif ? motif.label : '');
+      }
+      champObjet.addEventListener('input', majMotif);
+
+      champDescription.addEventListener('input', function () {
+        $('descriptionCompteur').textContent = champDescription.value.length;
+      });
+
+      // ----- Opérateur -----
+      $('operateurs').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-operateur]');
+        if (!b || b.dataset.operateur === etat.operateur) { return; }
+        etat.operateur = b.dataset.operateur;
+        selectionner($('operateurs'), 'data-operateur', etat.operateur);
+        // Réinitialiser le numéro lors du changement d'opérateur
+        champTelephone.value = '';
+        majResume();
+      });
+
+      champTelephone.addEventListener('input', function () {
+        champTelephone.value = champTelephone.value.replace(/\D/g, '').slice(0, 9);
+      });
+
+      // ----- Envoi -----
+      $('formDon').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (etat.envoi) { return; }
+        afficherErreur('');
+
+        var telephone = champTelephone.value.trim();
+        var objet = champObjet.value.trim();
+
+        if (!etat.montant || etat.montant <= 0) {
+          return afficherErreur('Veuillez saisir un montant valide.');
+        }
+        if (!objet) {
+          return afficherErreur('Veuillez indiquer l\'objet de votre don.');
+        }
+        if (!/^\d{9}$/.test(telephone)) {
+          return afficherErreur('Veuillez entrer un numéro de téléphone valide (9 chiffres).');
+        }
+
+        var confirme = window.confirm([
+          'Confirmer votre don',
+          '',
+          'Montant : ' + formaterMontant(etat.montant) + ' (' + etat.devise + ')',
+          'Objet : ' + objet,
+          'Moyen de paiement : ' + OPERATEURS[etat.operateur],
+          'Numéro : +243 ' + telephone,
+          '',
+          'Vous allez recevoir une demande de code PIN sur votre téléphone.'
+        ].join('\n'));
+
+        if (confirme) {
+          lancerPaiement({
+            montant: etat.montant,
+            devise: etat.devise,
+            operateur: etat.operateur,
+            telephone: telephone,
+            objet: objet,
+            description: champDescription.value.trim(),
+            type: etat.type,
+            nom: $('nom').value.trim() || undefined
+          });
+        }
+      });
+
+      function definirEnvoi(enCours) {
+        etat.envoi = enCours;
+        $('valider').disabled = enCours;
+        majResume();
+      }
+
+      function lancerPaiement(demande) {
+        definirEnvoi(true);
+
+        fetch(API + '/depot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(demande)
+        })
+          .then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (data) {
+              if (!r.ok || !data.paiement) {
+                throw new Error(data.message || 'Le paiement n\'a pas pu être lancé. Veuillez réessayer.');
+              }
+              return data.paiement;
+            });
+          })
+          .then(function (paiement) {
+            definirEnvoi(false);
+            etat.paiement = paiement;
+            etat.debutAttente = Date.now();
+            afficherEtape('attente');
+            planifierVerification();
+          })
+          .catch(function (err) {
+            definirEnvoi(false);
+            var message = err instanceof TypeError
+              ? 'Connexion impossible. Vérifiez votre connexion Internet et réessayez.'
+              : err.message;
+            afficherErreur(message);
+          });
+      }
+
+      function planifierVerification() {
+        arreterVerification();
+        etat.timer = setTimeout(verifierStatut, INTERVALLE_VERIFICATION_MS);
+      }
+
+      function arreterVerification() {
+        if (etat.timer) {
+          clearTimeout(etat.timer);
+          etat.timer = null;
+        }
+      }
+
+      function verifierStatut() {
+        if (!etat.paiement) { return; }
+
+        fetch(API + '/depot/' + encodeURIComponent(etat.paiement.depositId))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var paiement = data.paiement;
+            if (!paiement) { return planifierVerification(); }
+            etat.paiement = paiement;
+
+            if (paiement.statut === 'reussi') {
+              afficherEtape('reussi');
+            } else if (paiement.statut === 'echoue') {
+              $('messageEchec').textContent = paiement.message || 'Le paiement a échoué.';
+              afficherEtape('echoue');
+            } else if (Date.now() - etat.debutAttente > DUREE_MAX_ATTENTE_MS) {
+              afficherEtape('delai');
+            } else {
+              planifierVerification();
+            }
+          })
+          // Coupure réseau passagère : on réessaie
+          .catch(planifierVerification);
+      }
+
+      function afficherEtape(etape) {
+        var p = etat.paiement;
+        ['attente', 'reussi', 'echoue', 'delai'].forEach(function (nom) {
+          $('etape' + nom.charAt(0).toUpperCase() + nom.slice(1)).hidden = nom !== etape;
+        });
+        overlay.querySelectorAll('[data-montant]').forEach(function (el) { el.textContent = formaterMontant(p.montant); });
+        overlay.querySelectorAll('[data-reference]').forEach(function (el) { el.textContent = p.reference; });
+        overlay.querySelectorAll('[data-objet]').forEach(function (el) { el.textContent = p.objet; });
+        overlay.querySelectorAll('[data-operateur]').forEach(function (el) { el.textContent = OPERATEURS[etat.operateur]; });
+        overlay.querySelectorAll('[data-telephone]').forEach(function (el) { el.textContent = '+243 ' + champTelephone.value; });
+        overlay.classList.add('is-visible');
+      }
+
+      function fermerOverlay() {
+        arreterVerification();
+        overlay.classList.remove('is-visible');
+      }
+
+      overlay.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-action]');
+        if (!b) { return; }
+        var action = b.dataset.action;
+
+        if (action === 'fermer') {
+          // Le paiement continue côté opérateur
+          fermerOverlay();
+        } else if (action === 'verifier') {
+          etat.debutAttente = Date.now();
+          afficherEtape('attente');
+          verifierStatut();
+        } else if (action === 'terminer') {
+          fermerOverlay();
+          etat.paiement = null;
+          champObjet.value = '';
+          champDescription.value = '';
+          $('descriptionCompteur').textContent = '0';
+          majMotif();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+
+      // ----- Initialisation -----
+      afficherMontants();
+      choisirMontant(etat.montant);
+    })();
+  </script>
+</body>
+</html>

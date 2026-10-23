@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -86,6 +87,13 @@ app.use('/live', routeLive);
 app.use('/eglise', routeEglise);
 
 app.use('/evenement', routeEvenement);
+
+// ===============================
+// PAGE WEB DE DON
+// (les dons ne sont plus proposés dans l'application iOS)
+// ===============================
+
+app.use('/donnation', express.static(path.join(__dirname, 'public', 'donnation')));
 
 // ===============================
 // 404

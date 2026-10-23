@@ -1,4 +1,5 @@
 // controllers/articleController.js
+const mongoose = require("mongoose");
 const Article = require("../models/article");
 const Utilisateur = require("../models/user");
 const multer = require("multer");
@@ -105,18 +106,93 @@ const creerArticle = async (req, res) => {
 };
 
 // =====================================================
-// RÉCUPÉRER TOUS LES ARTICLES
+// RÉCUPÉRER LES ARTICLES
 // =====================================================
+// GET /article                      → tous les articles (comme avant)
+// GET /article?type=annonces        → filtre par type
+// GET /article?limite=10            → pagination (fil d'actualité) :
+//   renvoie "suivant", à repasser dans ?apres=... pour la page
+//   suivante (null quand il n'y a plus rien).
+// Le curseur (date + id) reste stable même si des articles
+// sont publiés pendant que l'utilisateur fait défiler.
+// =====================================================
+
+const TYPES_ARTICLE = ['annonces', 'predications', 'exhortations'];
+const LIMITE_MAX = 50;
+
+const encoderCurseur = (article) =>
+  Buffer.from(`${article.createdAt.toISOString()}_${article._id}`).toString('base64url');
+
+const decoderCurseur = (curseur) => {
+  try {
+    const [date, id] = Buffer.from(String(curseur), 'base64url').toString('utf8').split('_');
+    const createdAt = new Date(date);
+    if (isNaN(createdAt.getTime()) || !mongoose.Types.ObjectId.isValid(id)) {
+      return null;
+    }
+    return { createdAt, id: new mongoose.Types.ObjectId(id) };
+  } catch {
+    return null;
+  }
+};
 
 const getArticles = async (req, res) => {
 
   try {
-    const articles = await Article.find().sort({ createdAt: -1 });
+    const filtre = {};
+
+    if (req.query.type !== undefined) {
+      if (!TYPES_ARTICLE.includes(req.query.type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Type d'article invalide."
+        });
+      }
+      filtre.type = req.query.type;
+    }
+
+    // Sans "limite" : tous les articles (admin, anciennes versions de l'app)
+    if (req.query.limite === undefined) {
+      const articles = await Article.find(filtre).sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Articles récupérés avec succès.',
+        articles
+      });
+    }
+
+    const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 10, 1), LIMITE_MAX);
+
+    if (req.query.apres) {
+      const curseur = decoderCurseur(req.query.apres);
+      if (!curseur) {
+        return res.status(400).json({
+          success: false,
+          message: 'Curseur de pagination invalide.'
+        });
+      }
+      filtre.$or = [
+        { createdAt: { $lt: curseur.createdAt } },
+        { createdAt: curseur.createdAt, _id: { $lt: curseur.id } }
+      ];
+    }
+
+    // Un de plus pour savoir s'il reste une page
+    const resultats = await Article.find(filtre)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limite + 1);
+
+    const articles = resultats.slice(0, limite);
+    const suivant = resultats.length > limite
+      ? encoderCurseur(articles[articles.length - 1])
+      : null;
 
     return res.status(200).json({
       success: true,
       message: 'Articles récupérés avec succès.',
-      articles
+      articles,
+      suivant
     });
 
   } catch (error) {
