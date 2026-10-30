@@ -211,7 +211,7 @@ const createAudio = async (req, res) => {
     // =================================================
 
     envoyerATous({
-      titre: '🎧 Nouvel audio',
+      titre: 'Nouvel audio',
       message: `${audio.nom} — ${audio.personne}`,
       route: routes.audio(audio._id),
       image: audio.photoCouverture,

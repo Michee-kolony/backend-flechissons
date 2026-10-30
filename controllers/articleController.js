@@ -22,9 +22,9 @@ const R2_BUCKET = 'flechissons';
 // ===============================
 
 const TITRES_NOTIFICATION = {
-  annonces: '📢 Nouvelle annonce',
-  predications: '📖 Nouvelle prédication',
-  exhortations: '🙏 Nouvelle exhortation'
+  annonces: 'Nouvelle annonce',
+  predications: 'Nouvelle prédication',
+  exhortations: 'Nouvelle exhortation'
 };
 
 const nomComplet = (prenom, nom) =>
@@ -81,9 +81,9 @@ const creerArticle = async (req, res) => {
     });
 
     envoyerATous({
-      titre: TITRES_NOTIFICATION[nouvelArticle.type] || '📰 Nouvelle publication',
+      titre: TITRES_NOTIFICATION[nouvelArticle.type] || 'Nouvelle publication',
       message: nouvelArticle.titre,
-      route: routes.article(nouvelArticle._id),
+      route: routes.article(nouvelArticle),
       image: imageArticle(nouvelArticle),
       data: { type: 'article', articleId: nouvelArticle._id }
     });
@@ -292,9 +292,9 @@ const toggleLike = async (req, res) => {
       if (destinataires.length) {
         Utilisateur.findById(utilisateurId).select('nom prenom')
           .then(auteur => envoyerAUtilisateurs(destinataires, {
-            titre: `❤️ ${nomComplet(auteur?.prenom, auteur?.nom)} a aimé une publication`,
+            titre: `${nomComplet(auteur?.prenom, auteur?.nom)} a aimé une publication`,
             message: articleTrouve.titre,
-            route: routes.article(articleTrouve._id),
+            route: routes.article(articleTrouve),
             image: imageArticle(articleTrouve),
             data: { type: 'like', articleId: articleTrouve._id }
           }))
@@ -432,9 +432,9 @@ const ajouterCommentaire = async (req, res) => {
     });
 
     envoyerAUtilisateurs(participantsArticle(articleTrouve, utilisateurId, true), {
-      titre: `💬 ${nomComplet(commentaire.prenom, commentaire.nom)} a commenté « ${articleTrouve.titre} »`,
+      titre: `${nomComplet(commentaire.prenom, commentaire.nom)} a commenté « ${articleTrouve.titre} »`,
       message: commentaire.contenu,
-      route: routes.commentaire(articleTrouve._id, commentaire._id),
+      route: routes.commentaire(articleTrouve, commentaire._id),
       image: imageArticle(articleTrouve),
       data: { type: 'commentaire', articleId: articleTrouve._id, commentaireId: commentaire._id }
     });

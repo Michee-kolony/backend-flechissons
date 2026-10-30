@@ -352,9 +352,25 @@ const desabonnerAppareils = async (tokens) => {
 // ROUTES DE L'APPLICATION (deep links)
 // =====================================================
 
+// Vidéos (prédications, exhortations) : ouvertes dans le flux vidéo de l'onglet 3
+const FLUX_VIDEO = {
+  predications: '/tabs/tab3',
+  exhortations: '/tabs/tab3/exhortations'
+};
+
+const fluxVideo = (article) => (article.youtube && FLUX_VIDEO[article.type]) || null;
+
 const routes = {
-  article: (articleId) => `/article/${articleId}`,
-  commentaire: (articleId, commentaireId) => `/article/${articleId}?commentaire=${commentaireId}`,
+  article: (article) => {
+    const flux = fluxVideo(article);
+    return flux ? `${flux}?video=${article._id}` : `/article/${article._id}`;
+  },
+  commentaire: (article, commentaireId) => {
+    const flux = fluxVideo(article);
+    return flux
+      ? `${flux}?video=${article._id}&commentaire=${commentaireId}`
+      : `/article/${article._id}?commentaire=${commentaireId}`;
+  },
   audio: (audioId) => `/tabs/tab2?audio=${audioId}`,
   live: () => '/tabs/live'
 };

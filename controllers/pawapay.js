@@ -118,7 +118,7 @@ const notifierPaiementReussi = (paiement) => {
     }
 
     envoyerAUtilisateurs([paiement.utilisateurId], {
-        titre: '🙏 Merci pour votre générosité',
+        titre: 'Merci pour votre générosité',
         message: `Votre contribution de ${paiement.montant} ${paiement.devise} (${paiement.objet}) a bien été reçue.`,
         route: '/checkout',
         data: { type: 'paiement', reference: paiement.reference }

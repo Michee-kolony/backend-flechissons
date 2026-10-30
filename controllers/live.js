@@ -103,7 +103,7 @@ const notifierDebutLive = (live) => {
   }
 
   envoyerATous({
-    titre: '🔴 En direct maintenant',
+    titre: 'En direct maintenant',
     message: `${live.titre} — sur ${NOMS_PLATEFORMES[live.plateforme]}`,
     route: routes.live(),
     data: { type: 'live', liveId: live._id }
