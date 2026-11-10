@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 // une notification ciblée (like, commentaire, paiement) a un
 // document par destinataire.
 
-const TYPES = ['article', 'audio', 'live', 'like', 'commentaire', 'paiement', 'autre'];
+const TYPES = ['article', 'audio', 'live', 'evenement', 'like', 'commentaire', 'paiement', 'autre'];
 
 // Durée de conservation de l'historique
 const DUREE_CONSERVATION_JOURS = 60;

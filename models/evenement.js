@@ -28,6 +28,18 @@ const evenementSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ''
+    },
+
+    // Rappels push déjà envoyés (voir services/rappelEvenements.js).
+    // Remis à null quand la date ou l'heure change.
+    rappelVeilleEnvoye: {
+      type: Date,
+      default: null
+    },
+
+    rappelDebutEnvoye: {
+      type: Date,
+      default: null
     }
   },
   {

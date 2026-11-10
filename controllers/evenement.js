@@ -204,6 +204,17 @@ const updateEvenement = async (req, res) => {
       });
     }
 
+    // Nouvelle date ou heure : les rappels seront renvoyés au bon moment
+    const actuel = await Evenement.findById(req.params.id).select('date heure');
+
+    if (actuel && (
+      (donnees.date !== undefined && donnees.date !== actuel.date)
+      || (donnees.heure !== undefined && donnees.heure !== actuel.heure)
+    )) {
+      donnees.rappelVeilleEnvoye = null;
+      donnees.rappelDebutEnvoye = null;
+    }
+
     const evenement = await Evenement.findByIdAndUpdate(
       req.params.id,
       donnees,

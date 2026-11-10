@@ -372,7 +372,8 @@ const routes = {
       : `/article/${article._id}?commentaire=${commentaireId}`;
   },
   audio: (audioId) => `/tabs/tab2?audio=${audioId}`,
-  live: () => '/tabs/live'
+  live: () => '/tabs/live',
+  evenement: (evenement) => `/tabs/calendrier?date=${evenement.date}`
 };
 
 module.exports = {

@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const { demarrerRappelsEvenements } = require('./services/rappelEvenements');
 
 // ===============================
 // ROUTES
@@ -35,6 +36,9 @@ mongoose.connect(
 )
 .then(() => {
   console.log('Connecté à MongoDB Flechissons sur vps');
+
+  // Rappels du calendrier : la veille et à l'heure de chaque évènement
+  demarrerRappelsEvenements();
 })
 .catch((err) => {
   console.error('Erreur MongoDB:', err);
