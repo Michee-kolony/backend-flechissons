@@ -7,6 +7,7 @@ const { diffuser } = require("../realtime/articleEvents");
 const { envoyerATous, envoyerAUtilisateurs, imageArticle, routes } = require("../services/notification");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require("../config/r2");
+const Televersement = require("../models/televersement");
 
 // ===============================
 // URL PUBLIQUE R2
@@ -54,7 +55,8 @@ const creerArticle = async (req, res) => {
       type,
       theme,
       youtube,
-      lien
+      lien,
+      televersementId
     } = req.body;
 
     if (!titre || !description || !type || !theme) {
@@ -64,21 +66,72 @@ const creerArticle = async (req, res) => {
       });
     }
 
+    // ===============================
+    // MÉDIA TÉLÉVERSÉ SUR R2 (facultatif)
+    // Le lien vient de la session finalisée et vérifiée,
+    // jamais du navigateur. Réservation atomique : une même
+    // session ne peut servir qu'à une seule publication.
+    // ===============================
+
+    let media = null;
+
+    if (televersementId) {
+
+      if (!mongoose.Types.ObjectId.isValid(televersementId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Identifiant de téléversement invalide.'
+        });
+      }
+
+      media = await Televersement.findOneAndUpdate(
+        { _id: televersementId, adminId: req.adminId, statut: 'termine' },
+        { $set: { statut: 'utilise' } },
+        { new: true }
+      );
+
+      if (!media || !media.url) {
+        return res.status(400).json({
+          success: false,
+          message: "Le fichier n'est pas encore entièrement téléversé, ou il est déjà utilisé par une autre publication."
+        });
+      }
+    }
+
     const images = (req.files || []).map(
       file => `${R2_PUBLIC_URL}/${file.key}`
     );
 
-    const nouvelArticle = await Article.create({
-      titre: titre.trim(),
-      description: description.trim(),
-      type,
-      theme: theme.trim(),
-      youtube: youtube ? youtube.trim() : null,
-      lien: lien ? lien.trim() : null,
-      images,
-      likes: [],
-      commentaires: []
-    });
+    let nouvelArticle;
+
+    try {
+      nouvelArticle = await Article.create({
+        titre: titre.trim(),
+        description: description.trim(),
+        type,
+        theme: theme.trim(),
+        youtube: media ? media.url : (youtube ? youtube.trim() : null),
+        ...(media ? { youtubeKey: media.key } : {}),
+        lien: lien ? lien.trim() : null,
+        images,
+        likes: [],
+        commentaires: []
+      });
+    } catch (errCreation) {
+      // Le fichier redevient disponible pour une nouvelle tentative
+      if (media) {
+        await Televersement.updateOne(
+          { _id: media._id, statut: 'utilise', articleId: null },
+          { $set: { statut: 'termine' } }
+        ).catch(() => {});
+      }
+      throw errCreation;
+    }
+
+    if (media) {
+      Televersement.updateOne({ _id: media._id }, { $set: { articleId: nouvelArticle._id } })
+        .catch(err => console.error('❌ Liaison téléversement/article :', err.message));
+    }
 
     envoyerATous({
       titre: TITRES_NOTIFICATION[nouvelArticle.type] || 'Nouvelle publication',
@@ -604,6 +657,27 @@ const supprimerArticle = async (req, res) => {
             r2Error.message
           );
         }
+      }
+    }
+
+    // 2️⃣ bis — Média téléversé depuis l'admin (nouvelles prédications uniquement :
+    // les anciennes n'ont pas de youtubeKey et leur fichier n'est pas touché)
+    if (article.youtubeKey) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: article.youtubeKey
+          })
+        );
+
+        console.log(`🗑️ Média R2 supprimé : ${article.youtubeKey}`);
+
+      } catch (r2Error) {
+        console.error(
+          `❌ Erreur suppression média R2 pour ${article.youtubeKey}:`,
+          r2Error.message
+        );
       }
     }
 

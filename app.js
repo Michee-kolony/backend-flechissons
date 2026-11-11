@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const { demarrerRappelsEvenements } = require('./services/rappelEvenements');
+const { demarrerNettoyageTeleversements } = require('./services/nettoyageTeleversements');
 
 // ===============================
 // ROUTES
@@ -20,6 +21,7 @@ const routePawapay = require('./routes/pawapay');
 const routeLive = require('./routes/live');
 const routeEglise = require('./routes/eglise');
 const routeEvenement = require('./routes/evenement');
+const routeTeleversement = require('./routes/televersement');
 
 // ===============================
 // APPLICATION
@@ -39,6 +41,9 @@ mongoose.connect(
 
   // Rappels du calendrier : la veille et à l'heure de chaque évènement
   demarrerRappelsEvenements();
+
+  // Nettoyage des téléversements multipart abandonnés sur R2
+  demarrerNettoyageTeleversements();
 })
 .catch((err) => {
   console.error('Erreur MongoDB:', err);
@@ -91,6 +96,9 @@ app.use('/live', routeLive);
 app.use('/eglise', routeEglise);
 
 app.use('/evenement', routeEvenement);
+
+// Téléversement multipart des prédications vers Cloudflare R2
+app.use('/api/uploads/multipart', routeTeleversement);
 
 // ===============================
 // PAGE WEB DE DON

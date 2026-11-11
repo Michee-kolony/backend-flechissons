@@ -6,6 +6,8 @@ const router = express.Router();
 
 const upload = require("../middlewares/upload");
 
+const { auth } = require("../middlewares/auth");
+
 const {
     creerArticle,
     getArticles,
@@ -118,6 +120,7 @@ const uploadImages = (req, res, next) => {
 
 router.post(
     "/",
+    auth,          // Réservé aux administrateurs connectés (admin uniquement)
     uploadImages,  // Le middleware gère l'upload
     creerArticle   // Le contrôleur reçoit req.files déjà rempli
 );

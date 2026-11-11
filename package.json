@@ -10,6 +10,7 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1109.0",
+    "@aws-sdk/s3-request-presigner": "^3.1167.0",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.3.0",

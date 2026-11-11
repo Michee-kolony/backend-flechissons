@@ -81,6 +81,14 @@ const articleSchema = new mongoose.Schema(
             default: null
         },
 
+        // Clé R2 du média téléversé depuis l'admin (nouvelles prédications
+        // uniquement, absente des anciennes). Permet de supprimer le fichier
+        // R2 avec la publication. L'URL reste dans "youtube".
+        youtubeKey: {
+            type: String,
+            trim: true
+        },
+
         images: {
             type: [String],
             default: [],
