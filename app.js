@@ -100,6 +100,13 @@ app.use('/evenement', routeEvenement);
 app.use('/donnation', express.static(path.join(__dirname, 'public', 'donnation')));
 
 // ===============================
+// PAGE WEB : POLITIQUE DE CONFIDENTIALITÉ
+// (lien donné à l'App Store et au Google Play)
+// ===============================
+
+app.use('/confidentialite', express.static(path.join(__dirname, 'public', 'confidentialite')));
+
+// ===============================
 // 404
 // ===============================
 
