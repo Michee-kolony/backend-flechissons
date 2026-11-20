@@ -6,7 +6,8 @@ exports.register = (req, res) => {
 
     const { nom, email, password, role } = req.body;
 
-    const roleFinal = role === 'superadmin' ? 'superadmin' : 'admin';
+    // Rôle inconnu ou absent : simple admin
+    const roleFinal = Admin.ROLES.includes(role) ? role : 'admin';
 
     bcrypt.hash(password, 10)
         .then(passwordHash => {
@@ -130,5 +131,68 @@ exports.deleteAdmin = (req, res)=>{
 
          })
          .catch(error=>res.status(500).json({ message: "Erreur serveur", error: error.message }))
+
+}
+
+
+// =====================================================
+// COMPTE CONNECTÉ
+// GET /auth/moi
+// Permet à l'interface de relire le rôle à jour
+// (ex : un admin promu trésorier sans avoir à se reconnecter)
+// =====================================================
+
+exports.moi = (req, res) => {
+
+    Admin.findById(req.adminId).select('-password')
+         .then(admin => {
+
+            if (!admin) {
+                return res.status(404).json({ message: "Administrateur introuvable" });
+            }
+
+            res.status(200).json({
+                id: admin._id,
+                nom: admin.nom,
+                email: admin.email,
+                role: admin.role
+            });
+
+         })
+         .catch(error => res.status(500).json({ message: "Erreur serveur", error: error.message }));
+
+}
+
+
+// =====================================================
+// CHANGER LE RÔLE D'UN ADMINISTRATEUR (SUPERADMIN)
+// PATCH /auth/:id/role   { role: 'admin' | 'tresorier' | 'superadmin' }
+// =====================================================
+
+exports.changerRole = (req, res) => {
+
+    const { role } = req.body;
+
+    if (!Admin.ROLES.includes(role)) {
+        return res.status(400).json({ message: "Rôle invalide" });
+    }
+
+    // Un superadmin ne peut pas se retirer ses propres droits
+    if (req.params.id === String(req.adminId)) {
+        return res.status(400).json({ message: "Vous ne pouvez pas modifier votre propre rôle" });
+    }
+
+    Admin.findByIdAndUpdate(req.params.id, { role }, { new: true, runValidators: true })
+         .select('-password')
+         .then(admin => {
+
+            if (!admin) {
+                return res.status(404).json({ message: "Administrateur introuvable" });
+            }
+
+            res.status(200).json({ message: "Rôle mis à jour", admin });
+
+         })
+         .catch(error => res.status(500).json({ message: "Erreur serveur", error: error.message }));
 
 }
