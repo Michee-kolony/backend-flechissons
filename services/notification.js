@@ -223,13 +223,17 @@ const envoyerATous = async ({ titre, message, route, data, image }) => {
 // notifications activées sont notifiés.
 // =====================================================
 
-const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image }) => {
+// `historique: false` : push seul, sans entrée dans la liste des notifications
+// (ex : messages privés, qui ont leur propre écran).
+const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image, historique = true }) => {
 
   if (!userIds || !userIds.length) {
     return;
   }
 
-  await enregistrerHistorique(userIds, { titre, message, route, data, image });
+  if (historique) {
+    await enregistrerHistorique(userIds, { titre, message, route, data, image });
+  }
 
   const fcm = getMessagingFirebase();
   if (!fcm) {

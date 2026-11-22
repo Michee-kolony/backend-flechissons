@@ -23,6 +23,7 @@ const routeEglise = require('./routes/eglise');
 const routeEvenement = require('./routes/evenement');
 const routeTeleversement = require('./routes/televersement');
 const routeTresorerie = require('./routes/tresorerie');
+const routeMessagerie = require('./routes/messagerie');
 
 // ===============================
 // APPLICATION
@@ -100,6 +101,9 @@ app.use('/evenement', routeEvenement);
 
 // Trésorerie de l'église (rôle « tresorier » uniquement)
 app.use('/tresorerie', routeTresorerie);
+
+// Messagerie : utilisateurs de l'app <-> pasteur et administrateurs
+app.use('/messagerie', routeMessagerie);
 
 // Téléversement multipart des prédications vers Cloudflare R2
 app.use('/api/uploads/multipart', routeTeleversement);

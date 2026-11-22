@@ -9,6 +9,7 @@ const transporter = require("../config/mail");
 const { synchroniserAbonnementUtilisateur, desabonnerAppareils } = require("../services/notification");
 const Article = require("../models/article");
 const Paiement = require("../models/paiement");
+const { supprimerConversationsUtilisateur } = require("./messagerie");
 
 
 // =====================================================
@@ -2390,6 +2391,13 @@ exports.deleteAccount = async (req, res) => {
             { $set: { utilisateurId: null } }
 
         );
+
+
+        // ==============================
+        // MESSAGERIE : CONVERSATIONS PRIVÉES SUPPRIMÉES
+        // ==============================
+
+        await supprimerConversationsUtilisateur(user._id);
 
 
         // ==============================

@@ -1,6 +1,8 @@
 const Admin = require('../models/admin');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const r2 = require('../config/r2');
 
 exports.register = (req, res) => {
 
@@ -83,12 +85,7 @@ exports.login = (req, res) => {
                     res.status(200).json({
                         message: "Connexion réussie",
                         token: token,
-                        admin: {
-                            id: admin._id,
-                            nom: admin.nom,
-                            email: admin.email,
-                            role: admin.role
-                        }
+                        admin: admin.profilPublic()
                     });
 
                 });
@@ -151,17 +148,158 @@ exports.moi = (req, res) => {
                 return res.status(404).json({ message: "Administrateur introuvable" });
             }
 
-            res.status(200).json({
-                id: admin._id,
-                nom: admin.nom,
-                email: admin.email,
-                role: admin.role
-            });
+            res.status(200).json(admin.profilPublic());
 
          })
          .catch(error => res.status(500).json({ message: "Erreur serveur", error: error.message }));
 
 }
+
+
+// =====================================================
+// MODIFIER SON PROPRE PROFIL
+// PUT /auth/moi   (multipart : nom, email, telephone, titre, bio, photo?, supprimerPhoto?)
+// Le rôle n'est jamais modifiable ici.
+// =====================================================
+
+const supprimerFichierR2 = async (key) => {
+    if (!key) return;
+    try {
+        await r2.send(new DeleteObjectCommand({ Bucket: r2.parametres.bucket, Key: key }));
+    } catch (error) {
+        console.error(`❌ Suppression photo admin R2 (${key}) :`, error.message);
+    }
+};
+
+const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+exports.modifierProfil = async (req, res) => {
+
+    // Nouvelle photo déjà envoyée sur R2 par multer : à supprimer si on refuse la requête
+    const nouvelleKey = req.file ? req.file.key : '';
+
+    const refuser = async (statut, message) => {
+        await supprimerFichierR2(nouvelleKey);
+        return res.status(statut).json({ message });
+    };
+
+    try {
+
+        const admin = await Admin.findById(req.adminId);
+
+        if (!admin) {
+            return refuser(404, "Administrateur introuvable");
+        }
+
+        const { nom, email, telephone, titre, bio, supprimerPhoto } = req.body;
+
+        if (nom !== undefined) {
+            const valeur = String(nom).trim();
+            if (valeur.length < 2 || valeur.length > 80) {
+                return refuser(400, "Le nom doit contenir entre 2 et 80 caractères.");
+            }
+            admin.nom = valeur;
+        }
+
+        if (email !== undefined) {
+            const valeur = String(email).trim().toLowerCase();
+            if (!EMAIL_VALIDE.test(valeur)) {
+                return refuser(400, "Adresse e-mail invalide.");
+            }
+            if (valeur !== String(admin.email).toLowerCase()) {
+                const pris = await Admin.exists({ email: valeur, _id: { $ne: admin._id } });
+                if (pris) {
+                    return refuser(409, "Cette adresse e-mail est déjà utilisée par un autre administrateur.");
+                }
+            }
+            admin.email = valeur;
+        }
+
+        const champsTexte = { telephone: 30, titre: 60, bio: 500 };
+        const valeurs = { telephone, titre, bio };
+
+        for (const [champ, max] of Object.entries(champsTexte)) {
+            if (valeurs[champ] === undefined) continue;
+            const valeur = String(valeurs[champ]).trim();
+            if (valeur.length > max) {
+                return refuser(400, `Le champ « ${champ} » ne doit pas dépasser ${max} caractères.`);
+            }
+            admin[champ] = valeur;
+        }
+
+        // Photo : remplacement ou suppression
+        let ancienneKey = '';
+
+        if (req.file) {
+            ancienneKey = admin.photoKey;
+            admin.photoKey = req.file.key;
+            admin.photo = `${r2.parametres.publicUrl}/${req.file.key}`;
+        } else if (supprimerPhoto === 'true' || supprimerPhoto === true) {
+            ancienneKey = admin.photoKey;
+            admin.photoKey = '';
+            admin.photo = '';
+        }
+
+        await admin.save();
+
+        await supprimerFichierR2(ancienneKey);
+
+        return res.status(200).json({
+            message: "Profil mis à jour.",
+            admin: admin.profilPublic()
+        });
+
+    } catch (error) {
+        console.error("Erreur modification profil admin :", error);
+        await supprimerFichierR2(nouvelleKey);
+        return res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+
+};
+
+
+// =====================================================
+// CHANGER SON MOT DE PASSE
+// PUT /auth/moi/mot-de-passe   { actuel, nouveau }
+// =====================================================
+
+exports.changerMotDePasse = async (req, res) => {
+
+    try {
+
+        const { actuel, nouveau } = req.body;
+
+        if (!actuel || !nouveau) {
+            return res.status(400).json({ message: "Renseignez le mot de passe actuel et le nouveau." });
+        }
+
+        if (String(nouveau).length < 8) {
+            return res.status(400).json({ message: "Le nouveau mot de passe doit contenir au moins 8 caractères." });
+        }
+
+        const admin = await Admin.findById(req.adminId);
+
+        if (!admin) {
+            return res.status(404).json({ message: "Administrateur introuvable" });
+        }
+
+        const correct = await bcrypt.compare(String(actuel), admin.password);
+
+        if (!correct) {
+            return res.status(401).json({ message: "Mot de passe actuel incorrect." });
+        }
+
+        admin.password = await bcrypt.hash(String(nouveau), 10);
+        await admin.save();
+
+        return res.status(200).json({ message: "Mot de passe modifié." });
+
+    } catch (error) {
+        console.error("Erreur changement mot de passe admin :", error);
+        return res.status(500).json({ message: "Erreur serveur", error: error.message });
+    }
+
+};
 
 
 // =====================================================
