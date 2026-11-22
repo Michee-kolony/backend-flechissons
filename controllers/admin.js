@@ -124,7 +124,10 @@ exports.deleteAdmin = (req, res)=>{
                 return res.status(404).json({ message: "Administrateur introuvable" });
             }
 
-            res.status(200).json({ message: "Administrateur supprimé avec succès" });
+            // Photo de profil supprimée du bucket R2 (un échec n'annule pas la suppression du compte)
+            return supprimerFichierR2(clePhotoAdmin(admin)).then(() =>
+                res.status(200).json({ message: "Administrateur supprimé avec succès" })
+            );
 
          })
          .catch(error=>res.status(500).json({ message: "Erreur serveur", error: error.message }))
@@ -171,7 +174,15 @@ const supprimerFichierR2 = async (key) => {
     }
 };
 
-const EMAIL_VALIDE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Clé R2 de la photo : `photoKey`, ou déduite de l'URL si elle est sur notre bucket
+// (jamais une URL externe)
+function clePhotoAdmin(admin) {
+    if (admin.photoKey) return admin.photoKey;
+    const prefixe = `${r2.parametres.publicUrl}/`;
+    return admin.photo && admin.photo.startsWith(prefixe) ? admin.photo.slice(prefixe.length) : '';
+}
+
+const EMAIL_VALIDE =/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 exports.modifierProfil = async (req, res) => {
 

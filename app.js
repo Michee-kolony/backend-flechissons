@@ -6,6 +6,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const { demarrerRappelsEvenements } = require('./services/rappelEvenements');
 const { demarrerNettoyageTeleversements } = require('./services/nettoyageTeleversements');
+const { demarrerPurgeMessagerie } = require('./services/purgeMessagerie');
 
 // ===============================
 // ROUTES
@@ -46,6 +47,9 @@ mongoose.connect(
 
   // Nettoyage des téléversements multipart abandonnés sur R2
   demarrerNettoyageTeleversements();
+
+  // Messagerie : conversations effacées le 1er de chaque mois
+  demarrerPurgeMessagerie();
 })
 .catch((err) => {
   console.error('Erreur MongoDB:', err);

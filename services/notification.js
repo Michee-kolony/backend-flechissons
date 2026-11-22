@@ -82,7 +82,9 @@ const versData = (data) => {
 const imageValide = (image) =>
   typeof image === 'string' && image.startsWith('https://') ? image : undefined;
 
-const construireMessage = ({ titre, message, route, data, image }) => {
+// `groupe` : les notifications d'un même groupe (ex : une conversation) se regroupent sur le téléphone
+// `badge`  : nombre affiché sur l'icône de l'app (iOS)
+const construireMessage = ({ titre, message, route, data, image, groupe, badge }) => {
 
   const imageUrl = imageValide(image);
 
@@ -97,13 +99,16 @@ const construireMessage = ({ titre, message, route, data, image }) => {
       priority: 'high',
       notification: {
         channelId: 'flechissons',
-        sound: 'default'
+        sound: 'default',
+        ...(groupe && { tag: groupe })
       }
     },
     apns: {
       payload: {
         aps: {
           sound: 'default',
+          ...(groupe && { 'thread-id': groupe }),
+          ...(Number.isInteger(badge) && badge >= 0 && { badge }),
           ...(imageUrl && { 'mutable-content': 1 })
         }
       },
@@ -225,7 +230,7 @@ const envoyerATous = async ({ titre, message, route, data, image }) => {
 
 // `historique: false` : push seul, sans entrée dans la liste des notifications
 // (ex : messages privés, qui ont leur propre écran).
-const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image, historique = true }) => {
+const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, image, groupe, badge, historique = true }) => {
 
   if (!userIds || !userIds.length) {
     return;
@@ -255,7 +260,7 @@ const envoyerAUtilisateurs = async (userIds, { titre, message, route, data, imag
       return;
     }
 
-    const base = construireMessage({ titre, message, route, data, image });
+    const base = construireMessage({ titre, message, route, data, image, groupe, badge });
     const tokensMorts = [];
 
     for (const lot of decouper(tokens, TAILLE_LOT)) {

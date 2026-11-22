@@ -4,6 +4,7 @@ const router = express.Router();
 
 const { auth } = require('../middlewares/auth');
 const authUtilisateur = require('../middlewares/authUtilisateur');
+const photoMessage = require('../middlewares/uploadMessage');
 
 const {
   exigerAdminMessagerie,
@@ -32,7 +33,7 @@ admin.get('/utilisateurs', rechercherUtilisateurs);
 admin.get('/conversations', listerConversations('admin'));
 admin.post('/conversations', ouvrirConversation('admin'));
 admin.get('/conversations/:id/messages', getMessages('admin'));
-admin.post('/conversations/:id/messages', envoyerMessage('admin'));
+admin.post('/conversations/:id/messages', photoMessage, envoyerMessage('admin'));
 
 router.use('/admin', admin);
 
@@ -48,7 +49,7 @@ router.get('/contacts', getContacts);
 router.get('/conversations', listerConversations('utilisateur'));
 router.post('/conversations', ouvrirConversation('utilisateur'));
 router.get('/conversations/:id/messages', getMessages('utilisateur'));
-router.post('/conversations/:id/messages', envoyerMessage('utilisateur'));
+router.post('/conversations/:id/messages', photoMessage, envoyerMessage('utilisateur'));
 
 
 module.exports = router;

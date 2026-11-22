@@ -3,6 +3,9 @@ const Conversation = require('../models/conversation');
 const Message = require('../models/message');
 const Admin = require('../models/admin');
 const User = require('../models/user');
+const { DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const r2 = require('../config/r2');
+const Notification = require('../models/notification');
 const { envoyerAUtilisateurs } = require('../services/notification');
 
 
@@ -61,6 +64,10 @@ const formaterConversation = (conversation, cote) => ({
     : versContact(conversation.admin),
   dernierMessage: conversation.dernierMessage?.date ? conversation.dernierMessage : null,
   nonLus: cote === 'admin' ? conversation.nonLusAdmin : conversation.nonLusUtilisateur,
+  // Mon dernier message a-t-il été lu par l'autre ? (coches dans la liste ; null si le dernier vient de l'autre)
+  dernierMessageLu: conversation.dernierMessage?.auteur === cote
+    ? (cote === 'admin' ? conversation.nonLusUtilisateur : conversation.nonLusAdmin) === 0
+    : null,
   updatedAt: conversation.updatedAt
 });
 
@@ -290,22 +297,69 @@ const getMessages = (cote) => async (req, res) => {
 
 // =====================================================
 // ENVOYER UN MESSAGE
-// POST .../conversations/:id/messages   { texte }
+// POST .../conversations/:id/messages
+//   JSON      : { texte }
+//   multipart : photo (facultative) + texte (légende facultative)
 // =====================================================
 
+const supprimerFichiersR2 = async (keys) => {
+  const liste = keys.filter(Boolean);
+  for (let i = 0; i < liste.length; i += 1000) {
+    try {
+      await r2.send(new DeleteObjectsCommand({
+        Bucket: r2.parametres.bucket,
+        Delete: { Objects: liste.slice(i, i + 1000).map(Key => ({ Key })), Quiet: true }
+      }));
+    } catch (error) {
+      console.error('❌ Suppression photos messagerie R2 :', error.message);
+    }
+  }
+};
+
+const APERCU_PHOTO = '📷 Photo';
+
+// Une entrée par conversation dans la page « Notifications » de l'app,
+// remise en tête à chaque nouveau message (au lieu d'une entrée par message).
+// Type « autre » : les anciennes versions de l'app l'affichent sans problème.
+const notifierDansHistorique = async (utilisateurId, conversationId, { titre, message, image }) => {
+  try {
+    // Pilote MongoDB direct : Mongoose interdit de modifier createdAt (champ immuable)
+    await Notification.collection.updateOne(
+      { destinataire: new mongoose.Types.ObjectId(String(utilisateurId)), route: `/messagerie/${conversationId}` },
+      {
+        $set: {
+          type: 'autre',
+          titre: String(titre).slice(0, 200),
+          message: String(message).slice(0, 300),
+          image: image || null,
+          createdAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error('❌ Historique notification message :', error.message);
+  }
+};
+
 const envoyerMessage = (cote) => async (req, res) => {
+
+  // Photo déjà envoyée sur R2 par multer : supprimée si le message est refusé
+  const cleePhoto = req.file ? req.file.key : null;
+  const refuser = async (statut, message) => {
+    await supprimerFichiersR2([cleePhoto]);
+    return res.status(statut).json({ success: false, message });
+  };
+
   try {
     const texte = String(req.body.texte || '').trim();
 
-    if (!texte) {
-      return res.status(400).json({ success: false, message: 'Le message est vide.' });
+    if (!texte && !cleePhoto) {
+      return refuser(400, 'Le message est vide.');
     }
 
     if (texte.length > Message.TAILLE_MAX) {
-      return res.status(400).json({
-        success: false,
-        message: `Le message ne doit pas dépasser ${Message.TAILLE_MAX} caractères.`
-      });
+      return refuser(400, `Le message ne doit pas dépasser ${Message.TAILLE_MAX} caractères.`);
     }
 
     const conversation = await peupler(
@@ -314,16 +368,16 @@ const envoyerMessage = (cote) => async (req, res) => {
     );
 
     if (!conversation) {
-      return res.status(404).json({ success: false, message: 'Conversation introuvable.' });
+      return refuser(404, 'Conversation introuvable.');
     }
 
     // L'interlocuteur n'existe plus (compte supprimé) ou n'a plus accès à la messagerie
     if (cote === 'utilisateur'
       && (!conversation.admin || !Admin.ROLES_MESSAGERIE.includes(conversation.admin.role))) {
-      return res.status(410).json({ success: false, message: "Ce contact n'est plus disponible." });
+      return refuser(410, "Ce contact n'est plus disponible.");
     }
     if (cote === 'admin' && !conversation.utilisateur) {
-      return res.status(410).json({ success: false, message: "Ce compte utilisateur a été supprimé." });
+      return refuser(410, 'Ce compte utilisateur a été supprimé.');
     }
 
     const recents = await Message.countDocuments({
@@ -333,33 +387,67 @@ const envoyerMessage = (cote) => async (req, res) => {
     });
 
     if (recents >= MAX_PAR_MINUTE) {
-      return res.status(429).json({ success: false, message: 'Trop de messages en peu de temps. Patientez un instant.' });
+      return refuser(429, 'Trop de messages en peu de temps. Patientez un instant.');
     }
 
-    const message = await Message.create({ conversation: conversation._id, auteur: cote, texte });
+    const image = cleePhoto
+      ? { url: `${r2.parametres.publicUrl}/${cleePhoto}`, key: cleePhoto }
+      : undefined;
+
+    const message = await Message.create({ conversation: conversation._id, auteur: cote, texte, image });
+
+    const apercu = texte ? texte : APERCU_PHOTO;
 
     await Conversation.updateOne(
       { _id: conversation._id },
       {
-        $set: { dernierMessage: { texte: texte.slice(0, 200), auteur: cote, date: message.createdAt } },
+        $set: {
+          dernierMessage: {
+            texte: (cleePhoto && texte ? `${APERCU_PHOTO} · ${texte}` : apercu).slice(0, 200),
+            auteur: cote,
+            date: message.createdAt
+          }
+        },
         $inc: { [cote === 'admin' ? 'nonLusUtilisateur' : 'nonLusAdmin']: 1 }
       }
     );
 
-    // Notification push à l'utilisateur (les administrateurs voient le badge dans l'admin)
+    // Notification à l'utilisateur : push (bannière, son, badge) + entrée dans la cloche de l'app.
+    // Les administrateurs, eux, voient le badge et une notification de bureau dans l'admin.
     if (cote === 'admin') {
-      envoyerAUtilisateurs([conversation.utilisateur._id], {
-        titre: `${titreAdmin(req.admin)} ${req.admin.nom}`.trim(),
-        message: texte,
-        route: `/messagerie/${conversation._id}`,
-        image: req.admin.photo || undefined,
-        data: { type: 'message', conversationId: String(conversation._id) },
-        historique: false
-      }).catch(error => console.error('❌ Push message :', error.message));
+      const utilisateurId = conversation.utilisateur._id;
+      const titre = `💬 ${req.admin.nom} · ${titreAdmin(req.admin)}`;
+      const corps = cleePhoto ? (texte ? `📷 ${texte}` : APERCU_PHOTO) : texte;
+
+      (async () => {
+        const [{ total } = { total: 0 }] = await Conversation.aggregate([
+          { $match: { utilisateur: utilisateurId } },
+          { $group: { _id: null, total: { $sum: '$nonLusUtilisateur' } } }
+        ]);
+
+        await notifierDansHistorique(utilisateurId, conversation._id, {
+          titre: `Message de ${req.admin.nom}`,
+          message: corps,
+          image: req.admin.photo || null
+        });
+
+        await envoyerAUtilisateurs([utilisateurId], {
+          titre,
+          message: corps,
+          route: `/messagerie/${conversation._id}`,
+          // Photo reçue : affichée dans la notification
+          image: image ? image.url : undefined,
+          groupe: `conversation-${conversation._id}`,
+          badge: total,
+          data: { type: 'message', conversationId: String(conversation._id) },
+          historique: false
+        });
+      })().catch(error => console.error('❌ Notification message :', error.message));
     }
 
     return res.status(201).json({ success: true, message });
   } catch (error) {
+    await supprimerFichiersR2([cleePhoto]);
     return erreurServeur(res, 'ENVOI', error);
   }
 };
@@ -393,6 +481,8 @@ const supprimerConversationsUtilisateur = async (utilisateurId) => {
     const conversations = await Conversation.find({ utilisateur: utilisateurId }).select('_id').lean();
     const ids = conversations.map(c => c._id);
     if (ids.length) {
+      const photos = await Message.find({ conversation: { $in: ids }, 'image.key': { $ne: null } }).select('image.key').lean();
+      await supprimerFichiersR2(photos.map(m => m.image.key));
       await Message.deleteMany({ conversation: { $in: ids } });
       await Conversation.deleteMany({ _id: { $in: ids } });
     }
@@ -403,6 +493,7 @@ const supprimerConversationsUtilisateur = async (utilisateurId) => {
 
 
 module.exports = {
+  supprimerFichiersR2,
   exigerAdminMessagerie,
   getContacts,
   rechercherUtilisateurs,
