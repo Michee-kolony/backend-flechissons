@@ -6,16 +6,17 @@ const mongoose = require('mongoose');
 // Chaque catégorie appartient à un sens (entrée ou sortie)
 // =====================================================
 
+// Entrées : les types de contribution définis par le pasteur
 const CATEGORIES = {
 
   entree: [
-    'offrande',
-    'dime',
-    'don',
-    'action_de_graces',
-    'mission',
-    'cotisation',
-    'vente',
+    'offrande_adoration',
+    'offrande_prophete',
+    'dime_action_graces',
+    'dime_des_dimes',
+    'loyer_ouvriers',
+    'loyer_partenaires',
+    'contribution',
     'autre_entree'
   ],
 
@@ -33,6 +34,50 @@ const CATEGORIES = {
   ]
 
 };
+
+// Anciennes catégories d'entrée : plus proposées pour une nouvelle saisie,
+// mais toujours valides pour les opérations déjà enregistrées avec.
+const CATEGORIES_ANCIENNES = {
+  entree: ['offrande', 'dime', 'don', 'action_de_graces', 'mission', 'cotisation', 'vente'],
+  sortie: []
+};
+
+// Libellés lisibles (export CSV, journaux)
+const LIBELLES_CATEGORIES = {
+  entree: {
+    offrande_adoration: "Offrande d'adoration",
+    offrande_prophete: 'Offrande du prophète',
+    dime_action_graces: 'Dîme et action de grâces',
+    dime_des_dimes: 'Dîme des dîmes',
+    loyer_ouvriers: 'Loyer des ouvriers',
+    loyer_partenaires: 'Loyer des partenaires',
+    contribution: 'Contribution',
+    autre_entree: 'Autre entrée',
+    offrande: 'Offrande (ancienne catégorie)',
+    dime: 'Dîme (ancienne catégorie)',
+    don: 'Don (ancienne catégorie)',
+    action_de_graces: 'Action de grâces (ancienne catégorie)',
+    mission: 'Mission (ancienne catégorie)',
+    cotisation: 'Cotisation (ancienne catégorie)',
+    vente: 'Vente (ancienne catégorie)'
+  },
+  sortie: {
+    loyer: 'Loyer',
+    salaires: 'Salaires / honoraires',
+    factures: 'Factures (eau, électricité, internet)',
+    entretien: 'Entretien / réparations',
+    materiel: 'Matériel / équipement',
+    social: 'Aide sociale',
+    mission: 'Mission / évangélisation',
+    evenement: 'Évènement',
+    transport: 'Transport',
+    autre_sortie: 'Autre dépense'
+  }
+};
+
+const categorieConnue = (type, categorie) =>
+  (CATEGORIES[type] || []).includes(categorie)
+  || (CATEGORIES_ANCIENNES[type] || []).includes(categorie);
 
 const MODES_PAIEMENT = [
   'especes',
@@ -66,7 +111,7 @@ const operationTresorerieSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (valeur) {
-          return (CATEGORIES[this.type] || []).includes(valeur);
+          return categorieConnue(this.type, valeur);
         },
         message: 'Catégorie invalide pour ce type d\'opération.'
       }
@@ -165,6 +210,8 @@ const OperationTresorerie =
   mongoose.model('OperationTresorerie', operationTresorerieSchema);
 
 OperationTresorerie.CATEGORIES = CATEGORIES;
+OperationTresorerie.CATEGORIES_ANCIENNES = CATEGORIES_ANCIENNES;
+OperationTresorerie.LIBELLES_CATEGORIES = LIBELLES_CATEGORIES;
 OperationTresorerie.MODES_PAIEMENT = MODES_PAIEMENT;
 OperationTresorerie.DEVISES = DEVISES;
 

@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const Operation = require('../models/operationTresorerie');
 const Paiement = require('../models/paiement');
 
-const { CATEGORIES, MODES_PAIEMENT, DEVISES } = Operation;
+const { CATEGORIES, CATEGORIES_ANCIENNES, LIBELLES_CATEGORIES, MODES_PAIEMENT, DEVISES } = Operation;
+
+const libelleCategorie = (type, categorie) =>
+  LIBELLES_CATEGORIES[type]?.[categorie] || categorie;
 
 
 // =====================================================
@@ -51,7 +54,12 @@ const validerDonnees = (body, existante = null) => {
 
   if (!partiel || body.categorie !== undefined || body.type !== undefined) {
     const categorie = body.categorie !== undefined ? body.categorie : existante?.categorie;
-    if (!(CATEGORIES[typeFinal] || []).includes(categorie)) {
+    // Une ancienne catégorie reste acceptée uniquement si l'opération existante l'avait déjà
+    const ancienneConservee = partiel
+      && typeFinal === existante.type
+      && categorie === existante.categorie
+      && (CATEGORIES_ANCIENNES[typeFinal] || []).includes(categorie);
+    if (!(CATEGORIES[typeFinal] || []).includes(categorie) && !ancienneConservee) {
       return { erreur: 'Catégorie invalide pour ce type d\'opération.' };
     }
     donnees.categorie = categorie;
@@ -193,6 +201,8 @@ const getReferences = (req, res) => {
   res.status(200).json({
     success: true,
     categories: CATEGORIES,
+    categoriesAnciennes: CATEGORIES_ANCIENNES,
+    libellesCategories: LIBELLES_CATEGORIES,
     modesPaiement: MODES_PAIEMENT,
     devises: DEVISES
   });
@@ -565,7 +575,7 @@ const exporterCsv = async (req, res) => {
       lignes.push([
         op.date,
         op.type === 'entree' ? 'Entrée' : 'Sortie',
-        op.categorie,
+        libelleCategorie(op.type, op.categorie),
         op.libelle,
         (op.type === 'sortie' ? '-' : '') + montant(op.montant),
         op.devise,

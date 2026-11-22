@@ -182,7 +182,7 @@ exports.changerRole = (req, res) => {
         return res.status(400).json({ message: "Vous ne pouvez pas modifier votre propre rôle" });
     }
 
-    Admin.findByIdAndUpdate(req.params.id, { role }, { new: true, runValidators: true })
+    Admin.findByIdAndUpdate(req.params.id, { role }, { returnDocument: 'after', runValidators: true })
          .select('-password')
          .then(admin => {
 
