@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
 
@@ -31,7 +32,7 @@ const upload = multer({
     contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
       const ext = EXTENSIONS_AUTORISEES.includes(extension(file.originalname)) ? extension(file.originalname) : 'jpg';
-      cb(null, `${PREFIXE}${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`);
+      cb(null, `${PREFIXE}${Date.now()}-${crypto.randomUUID()}.${ext}`);
     }
   }),
 
