@@ -14,6 +14,7 @@ const {
   ouvrirConversation,
   getMessages,
   envoyerMessage,
+  supprimerConversation,
   getNonLus
 } = require('../controllers/messagerie');
 
@@ -34,6 +35,7 @@ admin.get('/conversations', listerConversations('admin'));
 admin.post('/conversations', ouvrirConversation('admin'));
 admin.get('/conversations/:id/messages', getMessages('admin'));
 admin.post('/conversations/:id/messages', photoMessage, envoyerMessage('admin'));
+admin.delete('/conversations/:id', supprimerConversation('admin'));
 
 router.use('/admin', admin);
 
@@ -50,6 +52,7 @@ router.get('/conversations', listerConversations('utilisateur'));
 router.post('/conversations', ouvrirConversation('utilisateur'));
 router.get('/conversations/:id/messages', getMessages('utilisateur'));
 router.post('/conversations/:id/messages', photoMessage, envoyerMessage('utilisateur'));
+router.delete('/conversations/:id', supprimerConversation('utilisateur'));
 
 
 module.exports = router;

@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const { demarrerRappelsEvenements } = require('./services/rappelEvenements');
 const { demarrerNettoyageTeleversements } = require('./services/nettoyageTeleversements');
 const { demarrerPurgeMessagerie } = require('./services/purgeMessagerie');
+const { reprendreConversions } = require('./services/conversionVideo');
 
 // ===============================
 // ROUTES
@@ -50,6 +51,9 @@ mongoose.connect(
 
   // Messagerie : conversations effacées le 1er de chaque mois
   demarrerPurgeMessagerie();
+
+  // Vidéos de prédication pas encore converties en H.264 (lisibles partout)
+  reprendreConversions();
 })
 .catch((err) => {
   console.error('Erreur MongoDB:', err);

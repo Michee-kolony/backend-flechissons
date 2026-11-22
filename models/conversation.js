@@ -35,7 +35,14 @@ const conversationSchema = new mongoose.Schema(
 
     // Messages non lus par chacun des deux participants
     nonLusUtilisateur: { type: Number, default: 0 },
-    nonLusAdmin: { type: Number, default: 0 }
+    nonLusAdmin: { type: Number, default: 0 },
+
+    // « Supprimer la discussion » : chacun ne voit plus les messages antérieurs
+    // à cette date (l'autre participant garde les siens)
+    effaceeLe: {
+      utilisateur: { type: Date, default: null },
+      admin: { type: Date, default: null }
+    }
 
   },
 

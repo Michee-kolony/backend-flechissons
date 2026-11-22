@@ -168,7 +168,12 @@ const rechercherUtilisateurs = async (req, res) => {
 const listerConversations = (cote) => async (req, res) => {
   try {
     const conversations = await peupler(
-      Conversation.find({ ...filtreProprietaire(req, cote), 'dernierMessage.date': { $ne: null } })
+      Conversation.find({
+        ...filtreProprietaire(req, cote),
+        'dernierMessage.date': { $ne: null },
+        // Discussion supprimée par ce participant : réapparaît seulement avec un nouveau message
+        $expr: { $gt: ['$dernierMessage.date', { $ifNull: [`$effaceeLe.${cote}`, new Date(0)] }] }
+      })
         .sort({ 'dernierMessage.date': -1 })
         .limit(200),
       cote
@@ -252,12 +257,21 @@ const getMessages = (cote) => async (req, res) => {
     const filtre = { conversation: conversation._id };
     let messages;
 
+    // Discussion supprimée par ce participant : les messages d'avant ne sont plus visibles
+    const effaceeLe = conversation.effaceeLe?.[cote] || null;
+    const bornes = effaceeLe ? { $gt: effaceeLe } : {};
+
     if (apres && !Number.isNaN(Date.parse(apres))) {
-      filtre.createdAt = { $gt: new Date(apres) };
+      const depuis = new Date(apres);
+      filtre.createdAt = { $gt: effaceeLe && effaceeLe > depuis ? effaceeLe : depuis };
       messages = await Message.find(filtre).sort({ createdAt: 1 }).limit(200).lean();
     } else {
+      filtre.createdAt = { ...bornes };
       if (avant && !Number.isNaN(Date.parse(avant))) {
-        filtre.createdAt = { $lt: new Date(avant) };
+        filtre.createdAt.$lt = new Date(avant);
+      }
+      if (!Object.keys(filtre.createdAt).length) {
+        delete filtre.createdAt;
       }
       messages = (await Message.find(filtre).sort({ createdAt: -1 }).limit(LIMITE_PAGE).lean()).reverse();
     }
@@ -454,6 +468,56 @@ const envoyerMessage = (cote) => async (req, res) => {
 
 
 // =====================================================
+// SUPPRIMER UNE DISCUSSION (pour soi)
+// DELETE /messagerie/conversations/:id
+// Les messages disparaissent pour ce participant ; l'autre garde sa copie
+// jusqu'à ce qu'il la supprime aussi, ou jusqu'à la purge mensuelle.
+// Quand les deux l'ont supprimée, les messages (et leurs photos) sont effacés pour de bon.
+// =====================================================
+
+const supprimerConversation = (cote) => async (req, res) => {
+  try {
+    const conversation = await trouverConversation(req, cote);
+
+    if (!conversation) {
+      return res.status(404).json({ success: false, message: 'Conversation introuvable.' });
+    }
+
+    const maintenant = new Date();
+    conversation.set(`effaceeLe.${cote}`, maintenant);
+    conversation[cote === 'admin' ? 'nonLusAdmin' : 'nonLusUtilisateur'] = 0;
+    await conversation.save();
+
+    // Son entrée dans la page « Notifications » de l'app disparaît aussi
+    if (cote === 'utilisateur') {
+      await Notification.deleteMany({
+        destinataire: conversation.utilisateur,
+        route: `/messagerie/${conversation._id}`
+      }).catch(() => {});
+    }
+
+    // Supprimée des deux côtés : on efface définitivement ce que plus personne ne voit
+    const autre = conversation.effaceeLe?.[autreCote(cote)];
+    if (autre) {
+      const limite = autre < maintenant ? autre : maintenant;
+      const anciens = await Message.find({ conversation: conversation._id, createdAt: { $lte: limite } })
+        .select('_id image.key').lean();
+      await supprimerFichiersR2(anciens.map(m => m.image?.key).filter(Boolean));
+      await Message.deleteMany({ _id: { $in: anciens.map(m => m._id) } });
+
+      if (!(await Message.exists({ conversation: conversation._id }))) {
+        await Conversation.deleteOne({ _id: conversation._id });
+      }
+    }
+
+    return res.status(200).json({ success: true, message: 'Discussion supprimée.' });
+  } catch (error) {
+    return erreurServeur(res, 'SUPPRESSION', error);
+  }
+};
+
+
+// =====================================================
 // NOMBRE TOTAL DE MESSAGES NON LUS (badge)
 // GET /messagerie/non-lus   |   GET /messagerie/admin/non-lus
 // =====================================================
@@ -501,6 +565,7 @@ module.exports = {
   ouvrirConversation,
   getMessages,
   envoyerMessage,
+  supprimerConversation,
   getNonLus,
   supprimerConversationsUtilisateur
 };

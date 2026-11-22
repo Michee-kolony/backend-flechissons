@@ -89,6 +89,13 @@ const articleSchema = new mongoose.Schema(
             trim: true
         },
 
+        // Média téléversé vérifié par services/conversionVideo.js
+        // (vidéo déjà en H.264, convertie, ou fichier audio)
+        mediaVerifie: {
+            type: Boolean,
+            default: false
+        },
+
         images: {
             type: [String],
             default: [],

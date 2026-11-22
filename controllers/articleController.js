@@ -8,6 +8,7 @@ const { envoyerATous, envoyerAUtilisateurs, imageArticle, routes } = require("..
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require("../config/r2");
 const Televersement = require("../models/televersement");
+const { planifierConversion } = require("../services/conversionVideo");
 
 // ===============================
 // URL PUBLIQUE R2
@@ -131,6 +132,9 @@ const creerArticle = async (req, res) => {
     if (media) {
       Televersement.updateOne({ _id: media._id }, { $set: { articleId: nouvelArticle._id } })
         .catch(err => console.error('❌ Liaison téléversement/article :', err.message));
+
+      // Vidéo iPhone (HEVC) ou autre format peu compatible : convertie en MP4 H.264 en arrière-plan
+      planifierConversion(nouvelArticle._id);
     }
 
     envoyerATous({
